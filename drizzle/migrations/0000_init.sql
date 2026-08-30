@@ -5,13 +5,13 @@ CREATE TABLE "accounts" (
 	"provider_id" text NOT NULL,
 	"access_token" text,
 	"refresh_token" text,
-	"access_token_expires_at" bigint,
-	"refresh_token_expires_at" bigint,
+	"access_token_expires_at" timestamp with time zone,
+	"refresh_token_expires_at" timestamp with time zone,
 	"scope" text,
 	"id_token" text,
 	"password" text,
-	"created_at" bigint NOT NULL,
-	"updated_at" bigint NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "availability_blocks" (
@@ -87,11 +87,11 @@ CREATE TABLE "sessions" (
 	"id" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
 	"token" text NOT NULL,
-	"expires_at" bigint NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
 	"ip_address" text,
 	"user_agent" text,
-	"created_at" bigint NOT NULL,
-	"updated_at" bigint NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "sessions_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
@@ -105,8 +105,8 @@ CREATE TABLE "users" (
 	"contact_handle" text,
 	"is_admin" boolean DEFAULT false NOT NULL,
 	"is_banned" boolean DEFAULT false NOT NULL,
-	"created_at" bigint NOT NULL,
-	"updated_at" bigint NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "users_email_unique" UNIQUE("email"),
 	CONSTRAINT "ck_users_contact_paired" CHECK (("users"."contact_method" IS NULL) = ("users"."contact_handle" IS NULL))
 );
@@ -115,9 +115,9 @@ CREATE TABLE "verifications" (
 	"id" text PRIMARY KEY NOT NULL,
 	"identifier" text NOT NULL,
 	"value" text NOT NULL,
-	"expires_at" bigint NOT NULL,
-	"created_at" bigint NOT NULL,
-	"updated_at" bigint NOT NULL
+	"expires_at" timestamp with time zone NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

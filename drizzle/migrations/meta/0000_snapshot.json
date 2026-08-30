@@ -1,5 +1,5 @@
 {
-  "id": "65411094-4ac8-43b6-b45f-86bfe846b626",
+  "id": "e35a7920-4e5f-46fc-a3bc-984b42dce33d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -46,13 +46,13 @@
         },
         "access_token_expires_at": {
           "name": "access_token_expires_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
         "refresh_token_expires_at": {
           "name": "refresh_token_expires_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -76,15 +76,17 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
@@ -855,7 +857,7 @@
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
@@ -873,15 +875,17 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
@@ -993,15 +997,17 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -1049,21 +1055,23 @@
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "bigint",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {

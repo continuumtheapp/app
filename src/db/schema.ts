@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  pgTable, serial, integer, text, boolean, real, bigint,
+  pgTable, serial, integer, text, boolean, real, bigint, timestamp,
   index, uniqueIndex, check, primaryKey, customType,
 } from "drizzle-orm/pg-core";
 
@@ -43,8 +43,8 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
   isBanned: boolean("is_banned").notNull().default(false),
 
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   check(
     "ck_users_contact_paired",
@@ -54,15 +54,23 @@ export const users = pgTable("users", {
 
 /* ------------------------------------------- better-auth managed tables */
 
+/**
+ * These four tables are written by better-auth, which passes JavaScript Date
+ * objects — so their time columns are real timestamps, not the epoch-integer
+ * `bigint` used elsewhere in this schema. Our own tables keep bigint because
+ * we control those writes; mixing the two here would mean casting on every
+ * insert better-auth makes.
+ */
+
 export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   token: text("token").notNull().unique(),
-  expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("idx_sessions_user").on(t.userId)]);
 
 export const accounts = pgTable("accounts", {
@@ -72,13 +80,13 @@ export const accounts = pgTable("accounts", {
   providerId: text("provider_id").notNull(),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
-  accessTokenExpiresAt: bigint("access_token_expires_at", { mode: "number" }),
-  refreshTokenExpiresAt: bigint("refresh_token_expires_at", { mode: "number" }),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
   scope: text("scope"),
   idToken: text("id_token"),
   password: text("password"),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("idx_accounts_user").on(t.userId),
   uniqueIndex("uq_accounts_provider").on(t.providerId, t.accountId),
@@ -88,9 +96,9 @@ export const verifications = pgTable("verifications", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
-  createdAt: bigint("created_at", { mode: "number" }).notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("idx_verifications_identifier").on(t.identifier)]);
 
 /* --------------------------------------------------------------- listings */

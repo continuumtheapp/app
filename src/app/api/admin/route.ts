@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         break;
 
       case "ban":
-        await db.update(users).set({ isBanned: true, updatedAt: now })
+        await db.update(users).set({ isBanned: true, updatedAt: new Date(now) })
           .where(eq(users.id, hostId!));
         // Hide everything they posted, not just the reported listing.
         await db.update(listings).set({ status: "hidden", updatedAt: now })

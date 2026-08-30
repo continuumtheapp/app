@@ -24,7 +24,7 @@ export async function PUT(request: Request) {
       name: body.name?.trim().slice(0, 80) || null,
       contactMethod: parsed.data.contactMethod,
       contactHandle: parsed.data.contactHandle,
-      updatedAt: Date.now(),
+      updatedAt: new Date(),
     }).where(eq(users.id, user.id));
 
     return Response.json({ ok: true });

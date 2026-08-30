@@ -1,7 +1,7 @@
 # Continuum
 
-A community platform for spiritual folks in Berlin. Housing discovery is the
-first surface; people discovery, events and dating follow.
+A community platform in Berlin, for now. Housing discovery is the
+first surface;
 
 ## Housing
 

@@ -4,14 +4,17 @@
  * These are two implementations of the same rule, and they are the likeliest
  * thing in this codebase to drift apart. A divergence would silently return
  * wrong search results with nothing failing. This runs both over a fixture
- * matrix against a real local D1 and fails on any disagreement.
+ * matrix against a real Postgres database and fails on any disagreement.
  *
- * Skipped unless DATABASE_URL is set: point it at a scratch Postgres database.
+ * Needs DATABASE_URL, supplied from .env.local by vitest.parity.config.mts.
+ * Skips itself when it is missing rather than failing.
  *
- * NOTE: this test owns the local database while it runs — it clears the tables,
- * inserts its own fixtures, and clears them again afterwards. Any seed data is
- * destroyed, so re-run `npm run db:seed` afterwards if you were using it. That
- * is why it lives behind its own script rather than in the default test run.
+ * Watch the summary line: vitest reports a failing beforeAll as "skipped", so a
+ * skip can mean the fixtures failed to load rather than that the database was
+ * absent. Read the full output before concluding it was the environment.
+ *
+ * The fixtures use ids 9001+ so they cannot collide with seeded development
+ * data, and only those rows are cleared afterwards.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import postgres from "postgres";
@@ -83,7 +86,7 @@ async function seed() {
   await sql(`DELETE FROM availability_blocks WHERE listing_id IN (${ids});`);
   await sql(`DELETE FROM listings WHERE id IN (${ids});`);
   await sql("DELETE FROM users WHERE id = 'pu';");
-  await sql("INSERT INTO users (id,email,email_verified,is_admin,is_banned,created_at,updated_at) VALUES ('pu','p@x.de',true,false,false,0,0);");
+  await sql("INSERT INTO users (id,email,email_verified,is_admin,is_banned,created_at,updated_at) VALUES ('pu','p@x.de',true,false,false,now(),now());");
   for (const f of FIXTURES) {
     await sql(`INSERT INTO listings (id,host_id,title,address,lat,lng,location,price_cents,price_period,price_per_night_cents,room_type,max_guests,min_nights,max_nights,flinta_only,deposit_cents,status,created_at,updated_at)
          VALUES (${f.id},'pu','L${f.id}','Berlin',52.5,13.4,ST_MakePoint(13.4,52.5)::geography,${f.price},'night',${f.price},'whole_flat',${f.guests},${f.min ?? "NULL"},${f.max ?? "NULL"},false,0,'published',0,0);`);

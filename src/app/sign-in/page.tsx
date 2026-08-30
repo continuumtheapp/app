@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { SignInForm } from "@/components/sign-in-form";
 
-export const metadata = { title: "Sign in · Berlin Housing" };
+export const metadata = { title: "Sign in · Continuum" };
 
 export default function SignInPage() {
   return (

@@ -1,4 +1,4 @@
-export const metadata = { title: "Privacy · Berlin Housing" };
+export const metadata = { title: "Privacy · Continuum" };
 
 export default function PrivacyPage() {
   return (

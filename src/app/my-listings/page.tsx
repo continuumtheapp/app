@@ -6,7 +6,7 @@ import { formatPrice } from "@/lib/pricing";
 import { MyListingActions } from "@/components/my-listing-actions";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "My listings · Berlin Housing" };
+export const metadata = { title: "My listings · Continuum" };
 
 export default async function MyListingsPage() {
   const user = await currentUser();

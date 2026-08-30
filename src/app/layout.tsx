@@ -3,7 +3,7 @@ import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 
 export const metadata: Metadata = {
-  title: "Berlin Housing Board",
+  title: "Continuum",
   description: "Short-term housing in Berlin, shared within our community.",
 };
 

@@ -3,7 +3,7 @@ import { currentUser } from "@/lib/session";
 import { ListingForm } from "@/components/listing-form";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Post a place · Berlin Housing" };
+export const metadata = { title: "Post a place · Continuum" };
 
 export default async function NewListingPage() {
   const user = await currentUser();

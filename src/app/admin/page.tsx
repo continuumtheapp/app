@@ -7,7 +7,7 @@ import { reports, listings, users } from "@/db/schema";
 import { AdminActions } from "@/components/admin-actions";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Admin · Berlin Housing" };
+export const metadata = { title: "Admin · Continuum" };
 
 export default async function AdminPage() {
   const user = await currentUser();

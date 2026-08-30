@@ -3,7 +3,7 @@ import { currentUser } from "@/lib/session";
 import { ProfileForm } from "@/components/profile-form";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Profile · Berlin Housing" };
+export const metadata = { title: "Profile · Continuum" };
 
 export default async function ProfilePage({
   searchParams,

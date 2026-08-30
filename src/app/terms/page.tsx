@@ -1,4 +1,4 @@
-export const metadata = { title: "Terms · Berlin Housing" };
+export const metadata = { title: "Terms · Continuum" };
 
 export default function TermsPage() {
   return (

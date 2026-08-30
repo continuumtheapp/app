@@ -22,7 +22,7 @@ export async function sendMagicLinkEmail(to: string, url: string): Promise<void>
       to,
       subject: "Your sign-in link",
       text: [
-        "Here's your link to sign in to the Berlin housing board:",
+        "Here's your link to sign in to Continuum:",
         "",
         url,
         "",
@@ -31,7 +31,7 @@ export async function sendMagicLinkEmail(to: string, url: string): Promise<void>
       ].join("\n"),
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:480px;line-height:1.5">
-          <p>Here's your link to sign in to the Berlin housing board:</p>
+          <p>Here's your link to sign in to Continuum:</p>
           <p style="margin:24px 0">
             <a href="${url}"
                style="background:#1a1a1a;color:#fff;padding:12px 20px;

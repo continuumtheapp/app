@@ -8,7 +8,7 @@ export async function SiteHeader() {
     <header className="border-b border-line bg-surface">
       <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between gap-4">
         <Link href="/" className="font-medium tracking-tight shrink-0">
-          Berlin Housing
+          Continuum
         </Link>
 
         <nav className="flex items-center gap-1 text-sm">

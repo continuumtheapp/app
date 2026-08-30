@@ -65,13 +65,21 @@ export async function createUploadUrl(
 /**
  * Public URL for a stored photo.
  *
- * `width` goes through Cloudflare Image Transformations, which resizes on the
- * fly. Only 5,000 unique (image, size) pairs per month are free, so stick to
- * the few sizes below rather than passing arbitrary widths.
+ * `width` requests a resize through Cloudflare Image Transformations, which is
+ * only available on a custom domain attached to a Cloudflare zone — the free
+ * `*.r2.dev` development URL returns 404 for /cdn-cgi/image paths. So we fall
+ * back to the full-size original there rather than serving broken images.
+ *
+ * Uploads are already downscaled to 2000px in the browser, so full-size is
+ * acceptable; transformations are a bandwidth optimisation, not a requirement.
+ * Point NEXT_PUBLIC_PHOTOS_BASE_URL at a custom domain to enable them. Note
+ * only 5,000 unique (image, size) pairs per month are free, so stick to the
+ * three widths below rather than passing arbitrary ones.
  */
 export function photoUrl(key: string, width?: 400 | 800 | 1600): string {
   const base = (process.env.NEXT_PUBLIC_PHOTOS_BASE_URL ?? "").replace(/\/$/, "");
-  if (!width) return `${base}/${key}`;
+  const canTransform = !base.includes(".r2.dev");
+  if (!width || !canTransform) return `${base}/${key}`;
   return `${base}/cdn-cgi/image/width=${width},quality=82,format=auto/${key}`;
 }
 

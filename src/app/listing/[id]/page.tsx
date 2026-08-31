@@ -32,12 +32,12 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </p>
       )}
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="sm:flex sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight text-balance">{listing.title}</h1>
           <p className="mt-1 text-sm text-ink-faint">{listing.address}</p>
         </div>
-        <div className="text-right shrink-0">
+        <div className="mt-2 sm:mt-0 sm:text-right shrink-0">
           <p className="text-lg font-medium tabular-nums">
             {formatPrice(listing.priceCents, listing.pricePeriod)}
           </p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import type { MapPin } from "./listings-map";
 
@@ -9,6 +10,9 @@ const ListingsMap = dynamic(() => import("./listings-map").then((m) => m.Listing
   ssr: false,
   loading: () => <div className="size-full rounded-xl border border-line bg-paper animate-pulse" />,
 });
+
+/** Tailwind's lg breakpoint, where the sidebar map appears. */
+const DESKTOP_QUERY = "(min-width: 1024px)";
 import type { ResultListing } from "@/lib/search";
 import type { NearMiss } from "@/lib/matching";
 
@@ -21,6 +25,20 @@ export function SearchResultsMap({
 }) {
   const router = useRouter();
   const params = useSearchParams();
+
+  // The parent hides this below lg with CSS, but a hidden map still mounts and
+  // builds its own markers — which on a phone duplicated every pin against the
+  // full-screen map. Only mount it when the viewport is actually desktop.
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_QUERY);
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  if (!isDesktop) return null;
 
   const pins: MapPin[] = [
     ...exact.map((l) => toPin(l, false)),

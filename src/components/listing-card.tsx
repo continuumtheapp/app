@@ -16,20 +16,28 @@ interface Props {
   checkOut: number;
 }
 
-/** A listing that fits the requested dates exactly. */
+/**
+ * Cards stack vertically on phones — photo on top, details below — and switch
+ * to a compact side-by-side row from `sm` up. Most use is on a phone, where a
+ * squeezed thumbnail beside wrapping text reads badly and hides the photo,
+ * which is the thing people actually judge a place by.
+ */
 export function ListingCard({ listing, checkIn, checkOut }: Props) {
   const nights = checkOut - checkIn;
   const total = estimateStayCostCents(listing.pricePerNightCents, nights);
 
   return (
     <article className="card overflow-hidden hover:border-line-strong transition-colors">
-      <Link href={`/listing/${listing.id}`} className="flex gap-4 p-3">
+      <Link href={`/listing/${listing.id}`}
+            className="block sm:flex sm:gap-4 sm:p-3 active:bg-paper/60">
         <Cover listing={listing} />
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 p-3 sm:p-0">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="font-medium leading-snug truncate">{listing.title}</h3>
-            <PriceTag priceCents={listing.priceCents} pricePeriod={listing.pricePeriod} />
+            <h3 className="font-medium leading-snug sm:truncate">{listing.title}</h3>
+            <span className="shrink-0 whitespace-nowrap">
+              <PriceTag priceCents={listing.priceCents} pricePeriod={listing.pricePeriod} />
+            </span>
           </div>
 
           <p className="mt-1 text-sm text-accent-ink">
@@ -63,13 +71,16 @@ export function NearMissCard({ listing, checkIn, checkOut }:
   Props & { listing: ResultListing & { near: NearMiss } }) {
   return (
     <article className="card overflow-hidden border-dashed hover:border-line-strong transition-colors">
-      <Link href={`/listing/${listing.id}`} className="flex gap-4 p-3">
+      <Link href={`/listing/${listing.id}`}
+            className="block sm:flex sm:gap-4 sm:p-3 active:bg-paper/60">
         <Cover listing={listing} muted />
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 p-3 sm:p-0">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="font-medium leading-snug truncate text-ink-soft">{listing.title}</h3>
-            <PriceTag priceCents={listing.priceCents} pricePeriod={listing.pricePeriod} />
+            <h3 className="font-medium leading-snug sm:truncate text-ink-soft">{listing.title}</h3>
+            <span className="shrink-0 whitespace-nowrap">
+              <PriceTag priceCents={listing.priceCents} pricePeriod={listing.pricePeriod} />
+            </span>
           </div>
 
           {/* The reason leads — it is the most useful thing on the card. */}
@@ -96,18 +107,28 @@ export function NearMissCard({ listing, checkIn, checkOut }:
 }
 
 function Cover({ listing, muted = false }: { listing: ResultListing; muted?: boolean }) {
+  const base = "bg-paper border-line overflow-hidden shrink-0 " + (muted ? "opacity-75 " : "");
+
+  // A full-bleed banner of nothing wastes most of a phone screen, so listings
+  // without a photo get a short strip instead of the 3:2 image area.
+  if (!listing.coverPhotoKey) {
+    return (
+      <div className={base +
+        "h-12 w-full border-b grid place-items-center text-ink-faint text-xs " +
+        "sm:h-auto sm:aspect-square sm:size-28 sm:w-28 sm:rounded-lg sm:border"}>
+        No photo
+      </div>
+    );
+  }
+
   return (
-    <div className={`size-24 sm:size-28 shrink-0 rounded-lg bg-paper border border-line overflow-hidden
-                     ${muted ? "opacity-75" : ""}`}>
-      {listing.coverPhotoKey ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={photoUrl(listing.coverPhotoKey, 400)} alt=""
-             className="size-full object-cover" loading="lazy" />
-      ) : (
-        <div className="size-full grid place-items-center text-ink-faint text-xs">
-          No photo
-        </div>
-      )}
+    <div className={base +
+      // Phone: a wide banner. Desktop: a small square beside the text.
+      "aspect-[3/2] w-full border-b " +
+      "sm:aspect-square sm:size-28 sm:w-28 sm:rounded-lg sm:border"}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={photoUrl(listing.coverPhotoKey, 800)} alt=""
+           className="size-full object-cover" loading="lazy" />
     </div>
   );
 }

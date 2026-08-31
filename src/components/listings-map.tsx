@@ -25,10 +25,16 @@ export interface MapPin {
 export function ListingsMap({
   pins,
   onSearchArea,
+  onPinClick,
+  selectedId = null,
   className = "",
 }: {
   pins: MapPin[];
   onSearchArea?: (bbox: { south: number; west: number; north: number; east: number }) => void;
+  /** Called instead of navigating, so mobile can show a card for the pin. */
+  onPinClick?: (id: number) => void;
+  /** Highlights the pin whose card is currently open. */
+  selectedId?: number | null;
   className?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -36,6 +42,11 @@ export function ListingsMap({
   const markers = useRef<Marker[]>([]);
   const resizeObserver = useRef<ResizeObserver | null>(null);
   const [ready, setReady] = useState(false);
+  // Held in a ref so changing the handler doesn't force every marker to rebuild.
+  const onPinClickRef = useRef(onPinClick);
+  onPinClickRef.current = onPinClick;
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
 
   /**
    * Create the map once and keep it for the lifetime of the component.
@@ -102,31 +113,50 @@ export function ListingsMap({
     if (!m || !ready) return;
     let cancelled = false;
 
+    // Cleared synchronously, before the await: if this ran after the dynamic
+    // import, a re-render could add its markers before the previous set was
+    // removed, leaving duplicates on the map.
+    markers.current.forEach((marker) => marker.remove());
+    markers.current = [];
+
     (async () => {
       const maplibre = await import("maplibre-gl");
       if (cancelled) return;
 
-    markers.current.forEach((marker) => marker.remove());
-    markers.current = [];
-
     for (const pin of pins) {
       const el = document.createElement("button");
       el.type = "button";
+      // Roomier than it looks on desktop: these are thumb targets on a phone,
+      // where anything under ~44px tall is awkward to hit.
       el.className = [
-        "px-2 py-0.5 rounded-full text-xs font-medium border shadow-sm cursor-pointer",
-        pin.isNearMiss
-          ? "bg-flexible-soft text-flexible border-flexible/30"
-          : "bg-white text-ink border-line-strong",
+        "px-2.5 py-1 rounded-full text-xs font-medium border shadow-sm cursor-pointer",
+        "transition-transform active:scale-95",
+        pin.id === selectedIdRef.current
+          ? "bg-ink text-white border-ink scale-110 z-10"
+          : pin.isNearMiss
+            ? "bg-flexible-soft text-flexible border-flexible/40"
+            : "bg-white text-ink border-line-strong",
       ].join(" ");
       el.textContent = formatPrice(pin.priceCents, pin.pricePeriod).split(" / ")[0];
       el.setAttribute("aria-label", `${pin.title} — view listing`);
-      el.onclick = () => { window.location.href = `/listing/${pin.id}`; };
+      el.onclick = () => {
+        if (onPinClickRef.current) onPinClickRef.current(pin.id);
+        else window.location.href = `/listing/${pin.id}`;
+      };
 
       const marker = new maplibre.Marker({ element: el })
         .setLngLat([pin.lng, pin.lat])
-        .setPopup(new maplibre.Popup({ offset: 12, closeButton: false })
-          .setHTML(`<div style="font-size:13px;font-weight:500;max-width:180px">${escapeHtml(pin.title)}</div>`))
         .addTo(m);
+
+      // A popup would cover the card that opens on tap, so only show one when
+      // the marker navigates directly.
+      if (!onPinClickRef.current) {
+        marker.setPopup(
+          new maplibre.Popup({ offset: 12, closeButton: false }).setHTML(
+            `<div style="font-size:13px;font-weight:500;max-width:180px">${escapeHtml(pin.title)}</div>`,
+          ),
+        );
+      }
 
       markers.current.push(marker);
     }
@@ -142,7 +172,7 @@ export function ListingsMap({
     })();
 
     return () => { cancelled = true; };
-  }, [pins, ready]);
+  }, [pins, ready, selectedId]);
 
   return (
     <div className={`relative ${className}`}>

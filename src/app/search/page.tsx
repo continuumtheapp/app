@@ -3,9 +3,10 @@ import Link from "next/link";
 import { runSearch, parseBbox } from "@/lib/search";
 import { searchSchema } from "@/lib/validation";
 import { toDayNumber } from "@/lib/dates";
-import { SearchForm } from "@/components/search-form";
+import { SearchSummary } from "@/components/search-summary";
 import { ListingCard, NearMissCard } from "@/components/listing-card";
 import { SearchResultsMap } from "@/components/search-results-map";
+import { MobileMapToggle } from "@/components/mobile-map-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +23,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
   if (!parsed.success) {
     return (
-      <Shell>
+      <div className="mx-auto max-w-6xl px-4 py-6">
         <p className="text-ink-soft">
           {parsed.error.issues[0]?.message ?? "Those dates don't look right."}
         </p>
-      </Shell>
+      </div>
     );
   }
 
@@ -47,7 +48,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const nothing = exact.length === 0 && nearMisses.length === 0;
 
   return (
-    <Shell>
+    <Shell checkIn={checkIn} checkOut={checkOut} guests={q.guests}>
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-6">
         <div className="min-w-0">
           {nothing ? (
@@ -91,17 +92,24 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           </div>
         </div>
       </div>
+
+      <MobileMapToggle exact={exact} nearMisses={nearMisses} />
     </Shell>
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({
+  children, checkIn, checkOut, guests,
+}: {
+  children: React.ReactNode; checkIn: number; checkOut: number; guests: number;
+}) {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
-      <Suspense fallback={<div className="card h-32 animate-pulse" />}>
-        <SearchForm compact />
+    // Bottom padding on mobile so the floating Map pill never covers the last card.
+    <div className="mx-auto max-w-6xl px-4 py-4 sm:py-6 pb-24 lg:pb-6">
+      <Suspense fallback={<div className="card h-16 lg:h-32 animate-pulse" />}>
+        <SearchSummary checkIn={checkIn} checkOut={checkOut} guests={guests} />
       </Suspense>
-      <div className="mt-6">{children}</div>
+      <div className="mt-4 sm:mt-6">{children}</div>
     </div>
   );
 }

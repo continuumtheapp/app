@@ -66,7 +66,7 @@ export function AvailabilityCalendar({
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-4 text-xs text-ink-faint">
+      <div className="mt-5 flex flex-wrap gap-4 text-xs text-ink-faint">
         <Key className="bg-accent-soft" label="Available" />
         {flexibleDays.length > 0 && <Key className="bg-flexible-soft" label="Maybe — ask the host" />}
       </div>

@@ -12,6 +12,15 @@ import { formatPrice } from "@/lib/pricing";
  */
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
+/**
+ * Shared marker styling. Deliberately no scale or transform — a pin that
+ * resizes when tapped reads as the map jumping around under your thumb.
+ * Selection changes colour only.
+ */
+const MARKER_BASE_CLASS =
+  "px-2.5 py-1 rounded-full text-xs font-medium border shadow-sm cursor-pointer " +
+  "transition-colors duration-150";
+
 export interface MapPin {
   id: number;
   lat: number;
@@ -40,13 +49,13 @@ export function ListingsMap({
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const markers = useRef<Marker[]>([]);
+  /** Marker elements by listing id, so selection restyles without rebuilding. */
+  const markerEls = useRef<Map<number, HTMLButtonElement>>(new Map());
   const resizeObserver = useRef<ResizeObserver | null>(null);
   const [ready, setReady] = useState(false);
   // Held in a ref so changing the handler doesn't force every marker to rebuild.
   const onPinClickRef = useRef(onPinClick);
   onPinClickRef.current = onPinClick;
-  const selectedIdRef = useRef(selectedId);
-  selectedIdRef.current = selectedId;
 
   /**
    * Create the map once and keep it for the lifetime of the component.
@@ -118,6 +127,7 @@ export function ListingsMap({
     // removed, leaving duplicates on the map.
     markers.current.forEach((marker) => marker.remove());
     markers.current = [];
+    markerEls.current.clear();
 
     (async () => {
       const maplibre = await import("maplibre-gl");
@@ -128,15 +138,9 @@ export function ListingsMap({
       el.type = "button";
       // Roomier than it looks on desktop: these are thumb targets on a phone,
       // where anything under ~44px tall is awkward to hit.
-      el.className = [
-        "px-2.5 py-1 rounded-full text-xs font-medium border shadow-sm cursor-pointer",
-        "transition-transform active:scale-95",
-        pin.id === selectedIdRef.current
-          ? "bg-ink text-white border-ink scale-110 z-10"
-          : pin.isNearMiss
-            ? "bg-flexible-soft text-flexible border-flexible/40"
-            : "bg-white text-ink border-line-strong",
-      ].join(" ");
+      // Selection is applied separately, in place — see the effect below.
+      el.className = MARKER_BASE_CLASS;
+      el.dataset.nearMiss = pin.isNearMiss ? "1" : "";
       el.textContent = formatPrice(pin.priceCents, pin.pricePeriod).split(" / ")[0];
       el.setAttribute("aria-label", `${pin.title} — view listing`);
       el.onclick = () => {
@@ -159,6 +163,7 @@ export function ListingsMap({
       }
 
       markers.current.push(marker);
+      markerEls.current.set(pin.id, el);
     }
 
     // Frame the results, unless there is only one (which would zoom in absurdly).
@@ -172,7 +177,28 @@ export function ListingsMap({
     })();
 
     return () => { cancelled = true; };
-  }, [pins, ready, selectedId]);
+  }, [pins, ready]);
+
+  /**
+   * Apply the selected style in place.
+   *
+   * Rebuilding the markers when the selection changed removed the very element
+   * the user was tapping, so only the first tap ever registered a card. This
+   * only swaps class names, leaving the DOM nodes and their handlers alone.
+   */
+  useEffect(() => {
+    for (const [id, el] of markerEls.current) {
+      const selected = id === selectedId;
+      const nearMiss = el.dataset.nearMiss === "1";
+      el.className = `${MARKER_BASE_CLASS} ${
+        selected
+          ? "bg-ink text-white border-ink"
+          : nearMiss
+            ? "bg-flexible-soft text-flexible border-flexible/40"
+            : "bg-white text-ink border-line-strong"
+      }`;
+    }
+  }, [selectedId, pins, ready]);
 
   return (
     <div className={`relative ${className}`}>

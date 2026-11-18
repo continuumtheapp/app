@@ -1,15 +1,18 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getListing } from "@/lib/listings";
-import { currentUser } from "@/lib/session";
+import { currentUser, isMember } from "@/lib/session";
+import { hasContact } from "@/lib/contact";
 import { photoUrl } from "@/lib/photos";
-import { formatPrice, formatEuros } from "@/lib/pricing";
+import { approximate, areaOf } from "@/lib/visibility";
+import { formatAllRates, formatMoney, quotedRates } from "@/lib/pricing";
 import { AvailabilityCalendar } from "@/components/availability-calendar";
 import { ContactReveal } from "@/components/contact-reveal";
 import { ReportButton } from "@/components/report-button";
 import { ListingMapPanel } from "@/components/listing-map-panel";
+import { Avatar } from "@/components/avatar";
 import {
-  RoomTypeBadge, FlintaBadge, DepositBadge, GuestsBadge,
+  RoomTypeBadge, FlintaBadge, AnmeldungBadge, PetsBadge, DepositBadge, GuestsBadge,
 } from "@/components/badges";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +26,12 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
   const viewer = await currentUser().catch(() => null);
   const isOwner = viewer?.id === listing.hostId;
+  // Approved members (and admins) see everything; everyone else the basics.
+  const full = isOwner || Boolean(viewer && !viewer.isBanned && (isMember(viewer) || viewer.isAdmin));
+  const photos = full ? listing.photoKeys : listing.photoKeys.slice(0, 1);
+  const pin = full
+    ? { lat: listing.lat, lng: listing.lng }
+    : { lat: approximate(listing.lat), lng: approximate(listing.lng) };
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -35,15 +44,24 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       <div className="sm:flex sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight text-balance">{listing.title}</h1>
-          <p className="mt-1 text-sm text-ink-faint">{listing.address}</p>
+          <p className="mt-1 text-sm text-ink-faint">
+            {full ? listing.address : areaOf(listing.address, listing.city)}
+          </p>
+          {full && (
+            <Link href={`/members/${listing.host.id}`}
+                  className="mt-3 inline-flex items-center gap-2 text-sm text-ink-soft hover:text-ink">
+              <Avatar name={listing.host.name} image={listing.host.image} size={28} />
+              Hosted by {listing.host.name ?? "a member"}
+            </Link>
+          )}
         </div>
         <div className="mt-2 sm:mt-0 sm:text-right shrink-0">
           <p className="text-lg font-medium tabular-nums">
-            {formatPrice(listing.priceCents, listing.pricePeriod)}
+            {formatAllRates(listing, listing.currency)}
           </p>
-          {listing.pricePeriod !== "night" && (
+          {quotedRates(listing).length === 1 && quotedRates(listing)[0][0] !== "night" && (
             <p className="text-xs text-ink-faint">
-              about {formatEuros(listing.pricePerNightCents)} a night
+              about {formatMoney(listing.pricePerNightCents, listing.currency)} a night
             </p>
           )}
         </div>
@@ -52,13 +70,15 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       <div className="mt-3 flex flex-wrap gap-1.5">
         <RoomTypeBadge roomType={listing.roomType} flatmateCount={listing.flatmateCount} />
         <GuestsBadge maxGuests={listing.maxGuests} />
-        <DepositBadge depositCents={listing.depositCents} />
+        <DepositBadge depositCents={listing.depositCents} currency={listing.currency} />
         {listing.flintaOnly && <FlintaBadge />}
+        {listing.anmeldung && <AnmeldungBadge />}
+        {listing.petsAllowed && <PetsBadge />}
       </div>
 
-      {listing.photoKeys.length > 0 && (
+      {photos.length > 0 && (
         <div className="mt-6 grid gap-2 sm:grid-cols-2">
-          {listing.photoKeys.map((key, i) => (
+          {photos.map((key, i) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={key}
@@ -72,7 +92,28 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {listing.description && (
+      {!full && (
+        <div className="mt-6 card bg-paper p-4 text-sm text-ink-soft">
+          {viewer ? (
+            <>
+              The address, description, all the photos and who's hosting are
+              for approved members.{" "}
+              <Link href="/join" className="underline underline-offset-2">Your membership</Link>
+            </>
+          ) : (
+            <>
+              The address, description, all the photos and who's hosting are
+              for members.{" "}
+              <Link href={`/sign-in?next=/listing/${listing.id}`} className="underline underline-offset-2">
+                Sign in
+              </Link>{" "}
+              to see them.
+            </>
+          )}
+        </div>
+      )}
+
+      {full && listing.description && (
         <div className="mt-8 max-w-prose">
           <p className="whitespace-pre-wrap leading-relaxed text-ink-soft">
             {listing.description}
@@ -98,11 +139,12 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
       <section className="mt-10">
         <h2 className="font-medium">Where it is</h2>
+        {!full && <p className="mt-1 text-sm text-ink-soft">Roughly: the pin is within about 500 m.</p>}
         <div className="mt-3 h-64">
           <ListingMapPanel
             pins={[{
-              id: listing.id, lat: listing.lat, lng: listing.lng, title: listing.title,
-              priceCents: listing.priceCents, pricePeriod: listing.pricePeriod,
+              id: listing.id, lat: pin.lat, lng: pin.lng, title: listing.title,
+              pricePerNightCents: listing.pricePerNightCents, currency: listing.currency,
             }]}
           />
         </div>
@@ -116,7 +158,8 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           </div>
         ) : (
           <ContactReveal listingId={listing.id} signedIn={Boolean(viewer)}
-                         hasContact={Boolean(viewer?.contactHandle)} />
+                         member={viewer ? isMember(viewer) : false}
+                         hasContact={viewer ? hasContact(viewer) : false} />
         )}
       </section>
 

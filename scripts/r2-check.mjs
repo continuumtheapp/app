@@ -13,7 +13,7 @@ const key = "_healthcheck.txt";
 
 const put = await client.fetch(`${base}/${key}`, {
   method: "PUT",
-  body: "continuum r2 check",
+  body: "simbacasa r2 check",
   headers: { "Content-Type": "text/plain" },
 });
 console.log("  PUT   ", put.status, put.ok ? "ok" : await put.text());

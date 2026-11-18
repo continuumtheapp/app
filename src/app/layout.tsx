@@ -3,14 +3,16 @@ import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 
 export const metadata: Metadata = {
-  title: "Continuum",
-  description: "Short-term housing in Berlin, shared within our community.",
+  title: "SimbaCasa",
+  description: "Short-term housing, shared within our community.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col">
+      {/* Extensions such as ColorZilla add attributes to <body> before React
+          loads. This only ignores attribute differences on <body> itself. */}
+      <body className="min-h-screen flex flex-col" suppressHydrationWarning>
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <footer className="border-t border-line mt-16">

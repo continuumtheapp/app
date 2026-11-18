@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Map as MapLibreMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { BERLIN_CENTER } from "@/lib/geo";
-import { formatPrice } from "@/lib/pricing";
+import { DEFAULT_CENTER, type Bbox } from "@/lib/geo";
+import { formatMoney } from "@/lib/pricing";
 
 /**
  * OpenFreeMap serves these tiles: no API key, no request limits, no logo.
@@ -13,21 +13,60 @@ import { formatPrice } from "@/lib/pricing";
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 /**
- * Shared marker styling. Deliberately no scale or transform — a pin that
- * resizes when tapped reads as the map jumping around under your thumb.
- * Selection changes colour only.
+ * Marker styling, applied inline rather than with Tailwind classes.
+ *
+ * Markers are created in plain DOM and restyled at runtime, so any Tailwind
+ * class names here would be assembled from variables — which Tailwind's
+ * scanner cannot see, so it never generates the CSS and the pins render
+ * unstyled. Inline styles avoid the build step entirely.
+ *
+ * Deliberately no transform: a pin that resizes when tapped reads as the map
+ * jumping under your thumb. Selection changes colour only, and hover is handled
+ * by CSS in globals.css — MapLibre intercepts pointer events on markers, so JS
+ * mouseenter handlers never fire.
  */
-const MARKER_BASE_CLASS =
-  "px-2.5 py-1 rounded-full text-xs font-medium border shadow-sm cursor-pointer " +
-  "transition-colors duration-150";
+const MARKER_BASE_STYLE: Partial<CSSStyleDeclaration> = {
+  padding: "4px 10px",
+  borderRadius: "999px",
+  fontSize: "12px",
+  fontWeight: "500",
+  lineHeight: "1.2",
+  borderWidth: "1px",
+  borderStyle: "solid",
+  boxShadow: "0 1px 2px rgb(0 0 0 / 0.08)",
+  cursor: "pointer",
+  transition: "background-color 150ms, border-color 150ms, color 150ms",
+  whiteSpace: "nowrap",
+};
+
+/** Matches the palette in globals.css. */
+const MARKER_COLOURS = {
+  /** An exact match. */
+  exact:    { background: "#ffffff", color: "#1a1a1a", borderColor: "#d4cfc7" },
+  /** A near miss — same amber as the "not quite" cards in the list. */
+  nearMiss: { background: "#fdf6e3", color: "#b8860b", borderColor: "#e8d9a8" },
+  /** The pin whose card is open. */
+  selected: { background: "#1a1a1a", color: "#ffffff", borderColor: "#1a1a1a" },
+} as const;
+
+function paintMarker(el: HTMLElement, state: "exact" | "nearMiss" | "selected") {
+  const c = MARKER_COLOURS[state];
+  el.style.backgroundColor = c.background;
+  el.style.color = c.color;
+  el.style.borderColor = c.borderColor;
+  el.style.zIndex = state === "selected" ? "10" : "";
+  // Read by the :hover rules in globals.css.
+  el.dataset.state = state;
+}
 
 export interface MapPin {
   id: number;
   lat: number;
   lng: number;
   title: string;
-  priceCents: number;
-  pricePeriod: "night" | "week" | "month";
+  /** Cheapest rate per night — comparable between listings priced differently. */
+  pricePerNightCents: number;
+  currency: string;
   isNearMiss?: boolean;
 }
 
@@ -36,9 +75,12 @@ export function ListingsMap({
   onSearchArea,
   onPinClick,
   selectedId = null,
+  area = null,
   className = "",
 }: {
   pins: MapPin[];
+  /** The area searched, e.g. a city: shown when there are no pins to frame. */
+  area?: Bbox | null;
   onSearchArea?: (bbox: { south: number; west: number; north: number; east: number }) => void;
   /** Called instead of navigating, so mobile can show a card for the pin. */
   onPinClick?: (id: number) => void;
@@ -56,6 +98,10 @@ export function ListingsMap({
   // Held in a ref so changing the handler doesn't force every marker to rebuild.
   const onPinClickRef = useRef(onPinClick);
   onPinClickRef.current = onPinClick;
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
+  const areaRef = useRef(area);
+  areaRef.current = area;
 
   /**
    * Create the map once and keep it for the lifetime of the component.
@@ -90,7 +136,7 @@ export function ListingsMap({
       const instance = new maplibre.Map({
         container: container.current,
         style: STYLE_URL,
-        center: [BERLIN_CENTER.lng, BERLIN_CENTER.lat],
+        center: [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat],
         zoom: 10.5,
         attributionControl: { compact: true },
       });
@@ -136,12 +182,12 @@ export function ListingsMap({
     for (const pin of pins) {
       const el = document.createElement("button");
       el.type = "button";
-      // Roomier than it looks on desktop: these are thumb targets on a phone,
-      // where anything under ~44px tall is awkward to hit.
-      // Selection is applied separately, in place — see the effect below.
-      el.className = MARKER_BASE_CLASS;
+      el.className = "simbacasa-pin";
+      Object.assign(el.style, MARKER_BASE_STYLE);
       el.dataset.nearMiss = pin.isNearMiss ? "1" : "";
-      el.textContent = formatPrice(pin.priceCents, pin.pricePeriod).split(" / ")[0];
+      paintMarker(el, pin.isNearMiss ? "nearMiss" : "exact");
+
+      el.textContent = formatMoney(pin.pricePerNightCents, pin.currency);
       el.setAttribute("aria-label", `${pin.title} — view listing`);
       el.onclick = () => {
         if (onPinClickRef.current) onPinClickRef.current(pin.id);
@@ -173,6 +219,9 @@ export function ListingsMap({
       m.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 400 });
     } else if (pins.length === 1) {
       m.easeTo({ center: [pins[0].lng, pins[0].lat], zoom: 13, duration: 400 });
+    } else if (areaRef.current) {
+      const a = areaRef.current;
+      m.fitBounds([[a.west, a.south], [a.east, a.north]], { padding: 20, duration: 0 });
       }
     })();
 
@@ -188,15 +237,8 @@ export function ListingsMap({
    */
   useEffect(() => {
     for (const [id, el] of markerEls.current) {
-      const selected = id === selectedId;
       const nearMiss = el.dataset.nearMiss === "1";
-      el.className = `${MARKER_BASE_CLASS} ${
-        selected
-          ? "bg-ink text-white border-ink"
-          : nearMiss
-            ? "bg-flexible-soft text-flexible border-flexible/40"
-            : "bg-white text-ink border-line-strong"
-      }`;
+      paintMarker(el, id === selectedId ? "selected" : nearMiss ? "nearMiss" : "exact");
     }
   }, [selectedId, pins, ready]);
 

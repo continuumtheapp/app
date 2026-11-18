@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   pgTable, serial, integer, text, boolean, real, bigint, timestamp,
-  index, uniqueIndex, check, primaryKey, customType,
+  index, uniqueIndex, check, primaryKey, customType, type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -14,7 +14,7 @@ import {
  *
  * A real spatial type, so distance queries ("within 5km of here") are exact and
  * index-backed by GiST rather than the bounding-box approximation a plain
- * lat/lng pair forces. Continuum needs that for listings now and for people and
+ * lat/lng pair forces. SimbaCasa needs that for listings now and for people and
  * events discovery later.
  *
  * Declared as `customType` returning a bare name because drizzle-kit quotes any
@@ -36,9 +36,51 @@ export const users = pgTable("users", {
   name: text("name"),
   image: text("image"),
 
-  // Contact details are mandatory before posting a listing or revealing another's.
-  contactMethod: text("contact_method", { enum: ["telegram", "whatsapp"] }),
-  contactHandle: text("contact_handle"),
+  /**
+   * The Telegram account this person signs in with. Numeric and permanent,
+   * unlike the username, so it is the identity everything else hangs off.
+   */
+  telegramId: bigint("telegram_id", { mode: "number" }).unique(),
+
+  // The Telegram @username, copied from Telegram on every sign-in — never
+  // typed in — and required before posting or revealing another's contact.
+  telegramHandle: text("telegram_handle"),
+  /**
+   * No longer used: Telegram is the only contact. Kept so the version of the
+   * site still live (which reads it) keeps working against this database;
+   * drop it once the new version is deployed.
+   */
+  whatsappNumber: text("whatsapp_number"),
+
+  /** A few lines about themselves, shown on their profile. */
+  bio: text("bio"),
+
+  /* ---- Joining: every member is invited by another one (or was already in
+     the Telegram group). An admin approves each new person. */
+
+  /** pending → member, or rejected. Only members can post or contact people. */
+  memberStatus: text("member_status", { enum: ["pending", "member", "rejected"] })
+    .notNull().default("pending"),
+  /** The secret in this member's personal invite link, /join/<code>. */
+  inviteCode: text("invite_code").unique(),
+  /** Whose invite link they joined through. Null for founding group members. */
+  invitedById: text("invited_by_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+  joinRequestedAt: timestamp("join_requested_at", { withTimezone: true }),
+  reviewedById: text("reviewed_by_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+
+  /* ---- ID check: needed before publishing an offer or a search. The photos
+     are kept only until an admin has looked at them, then deleted; all that
+     stays is when and by whom. */
+
+  idCheckStatus: text("id_check_status", { enum: ["none", "submitted", "verified", "rejected"] })
+    .notNull().default("none"),
+  /** Private storage keys of the ID photo and the selfie. Null once checked. */
+  idDocKey: text("id_doc_key"),
+  idSelfieKey: text("id_selfie_key"),
+  idSubmittedAt: timestamp("id_submitted_at", { withTimezone: true }),
+  idCheckedAt: timestamp("id_checked_at", { withTimezone: true }),
+  idCheckedById: text("id_checked_by_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
 
   isAdmin: boolean("is_admin").notNull().default(false),
   isBanned: boolean("is_banned").notNull().default(false),
@@ -46,9 +88,13 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  index("idx_users_invited_by").on(t.invitedById),
+  index("idx_users_member_status").on(t.memberStatus),
+  // Empty strings would pass a NOT NULL check but are not a usable handle.
   check(
-    "ck_users_contact_paired",
-    sql`(${t.contactMethod} IS NULL) = (${t.contactHandle} IS NULL)`,
+    "ck_users_contact_nonempty",
+    sql`(${t.telegramHandle} IS NULL OR length(trim(${t.telegramHandle})) > 0)
+    AND (${t.whatsappNumber} IS NULL OR length(trim(${t.whatsappNumber})) > 0)`,
   ),
 ]);
 
@@ -78,6 +124,8 @@ export const accounts = pgTable("accounts", {
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   accountId: text("account_id").notNull(),
   providerId: text("provider_id").notNull(),
+  /** Required by better-auth 1.7+: the OIDC issuer the account came from. */
+  issuer: text("issuer").notNull().default(""),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
@@ -110,17 +158,28 @@ export const listings = pgTable("listings", {
   title: text("title").notNull(),
   description: text("description"),
 
-  // Geocoded once at save time, then never again. Berlin bounding box enforced.
+  // Geocoded once at save time, then never again. Anywhere in the world.
   address: text("address").notNull(),
+  /** City and country (ISO code, e.g. "DE") the address is in. */
+  city: text("city").notNull().default("Berlin"),
+  country: text("country").notNull().default("DE"),
+  /** ISO 4217, from the country. Every price on the listing is in it. */
+  currency: text("currency").notNull().default("EUR"),
   lat: real("lat").notNull(),
   lng: real("lng").notNull(),
   /** PostGIS point kept in step with lat/lng, for distance queries. */
   location: geographyPoint("location").notNull(),
 
   // Money is always integer cents; never a float.
-  priceCents: integer("price_cents").notNull(),
-  pricePeriod: text("price_period", { enum: ["night", "week", "month"] }).notNull(),
-  // Denormalised at write (week/7, month/30) so budget filters are one indexed compare.
+  //
+  // A host can quote any combination of these — many offer a nightly rate for
+  // short stays and a cheaper monthly one for long stays. At least one must be
+  // set; search picks whichever suits the requested stay.
+  priceNightCents: integer("price_night_cents"),
+  priceWeekCents: integer("price_week_cents"),
+  priceMonthCents: integer("price_month_cents"),
+  // The cheapest available rate normalised to one night, denormalised at write
+  // so budget filtering and sorting stay a single indexed integer compare.
   pricePerNightCents: integer("price_per_night_cents").notNull(),
 
   roomType: text("room_type", { enum: ["whole_flat", "shared"] }).notNull(),
@@ -130,6 +189,11 @@ export const listings = pgTable("listings", {
   flintaOnly: boolean("flinta_only").notNull().default(false),
   depositCents: integer("deposit_cents").notNull().default(0), // 0 == no deposit
 
+  // Hard requirements for many seekers, so requests can filter on them: a
+  // third of Berlin long-term searches in the group ask for Anmeldung.
+  anmeldung: boolean("anmeldung").notNull().default(false),
+  petsAllowed: boolean("pets_allowed").notNull().default(false),
+
   // Host's stay bounds. NULL == unconstrained.
   minNights: integer("min_nights"),
   maxNights: integer("max_nights"),
@@ -137,6 +201,11 @@ export const listings = pgTable("listings", {
   status: text("status", {
     enum: ["draft", "published", "taken", "hidden", "archived"],
   }).notNull().default("draft"),
+
+  /** When the host ticked the Fair Rent Pledge. Null on listings from before it. */
+  fairRentPledgedAt: timestamp("fair_rent_pledged_at", { withTimezone: true }),
+  /** The bot's post about it in the group, so it can be taken down. */
+  telegramMessageId: bigint("telegram_message_id", { mode: "number" }),
 
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
@@ -157,7 +226,17 @@ export const listings = pgTable("listings", {
   ),
   check(
     "ck_listings_money",
-    sql`${t.priceCents} >= 0 AND ${t.pricePerNightCents} >= 0 AND ${t.depositCents} >= 0`,
+    sql`(${t.priceNightCents} IS NULL OR ${t.priceNightCents} >= 0)
+    AND (${t.priceWeekCents} IS NULL OR ${t.priceWeekCents} >= 0)
+    AND (${t.priceMonthCents} IS NULL OR ${t.priceMonthCents} >= 0)
+    AND ${t.pricePerNightCents} >= 0 AND ${t.depositCents} >= 0`,
+  ),
+  // A listing with no price at all is not an offer.
+  check(
+    "ck_listings_has_price",
+    sql`${t.priceNightCents} IS NOT NULL
+     OR ${t.priceWeekCents} IS NOT NULL
+     OR ${t.priceMonthCents} IS NOT NULL`,
   ),
   check("ck_listings_guests", sql`${t.maxGuests} >= 1`),
 ]);
@@ -239,6 +318,67 @@ export const reports = pgTable("reports", {
 }, (t) => [
   index("idx_reports_status").on(t.status, t.createdAt),
   uniqueIndex("uq_reports_reporter_listing").on(t.reporterId, t.listingId),
+]);
+
+/* --------------------------------------------------------------- requests */
+
+/**
+ * Someone looking for a place: the seeker's side of a listing.
+ *
+ * A request is an area and a stay, not an address. It expires on its own once
+ * check-out has passed — see effectiveStatus() in src/lib/requests.ts — so
+ * nobody has to repost or clean up.
+ */
+export const housingRequests = pgTable("housing_requests", {
+  id: serial("id").primaryKey(),
+  seekerId: text("seeker_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  /** The city searched in, its country (ISO code) and its centre. */
+  city: text("city").notNull().default("Berlin"),
+  country: text("country").notNull().default("DE"),
+  /** ISO 4217, from the country: the budget is in it. */
+  currency: text("currency").notNull().default("EUR"),
+  cityLat: real("city_lat").notNull().default(52.52),
+  cityLng: real("city_lng").notNull().default(13.405),
+  /** Optional: why they're coming, what they'll be doing. Null == none. */
+  note: text("note"),
+  /** Preferred neighbourhoods. Empty == anywhere in the city. */
+  areas: text("areas").array().notNull().default(sql`'{}'::text[]`),
+
+  // Half-open [check_in, check_out), like every other interval here.
+  checkIn: integer("check_in").notNull(),
+  checkOut: integer("check_out").notNull(),
+  datesFlexible: boolean("dates_flexible").notNull().default(false),
+
+  roomType: text("room_type", { enum: ["whole_flat", "shared", "either"] }).notNull(),
+  guests: integer("guests").notNull().default(1),
+  withChildren: boolean("with_children").notNull().default(false),
+  withPets: boolean("with_pets").notNull().default(false),
+
+  // Optional. Integer cents for one period, like listing prices.
+  maxBudgetCents: integer("max_budget_cents"),
+  budgetPeriod: text("budget_period", { enum: ["night", "week", "month"] }),
+
+  needsAnmeldung: boolean("needs_anmeldung").notNull().default(false),
+  flintaOnly: boolean("flinta_only").notNull().default(false),
+
+  status: text("status", { enum: ["open", "found", "closed"] }).notNull().default("open"),
+  /** The bot's post about it in the group, so it can be taken down. */
+  telegramMessageId: bigint("telegram_message_id", { mode: "number" }),
+
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+}, (t) => [
+  index("idx_requests_seeker").on(t.seekerId, t.updatedAt),
+  index("idx_requests_open").on(t.status, t.checkOut),
+  check("ck_requests_dates", sql`${t.checkOut} > ${t.checkIn}`),
+  check("ck_requests_guests", sql`${t.guests} >= 1`),
+  // A budget means nothing without its period, and vice versa.
+  check(
+    "ck_requests_budget",
+    sql`(${t.maxBudgetCents} IS NULL) = (${t.budgetPeriod} IS NULL)
+    AND (${t.maxBudgetCents} IS NULL OR ${t.maxBudgetCents} >= 0)`,
+  ),
 ]);
 
 export type Listing = typeof listings.$inferSelect;

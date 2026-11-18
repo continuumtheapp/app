@@ -1,5 +1,5 @@
 {
-  "name": "continuum",
+  "name": "simbacasa",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -19,6 +19,7 @@
     "db:check": "node --env-file=.env.local scripts/db-check.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.9.0",
     "aws4fetch": "^1.0.20",
     "better-auth": "^1.7.2",
     "drizzle-orm": "^0.45.2",

@@ -1,4 +1,4 @@
-# Continuum
+# SimbaCasa
 
 A community platform in Berlin, for now. Housing discovery is the
 first surface;
@@ -31,12 +31,11 @@ booking site doesn't.
 | Framework | Next.js 16 (App Router) on Vercel |
 | Database | Vercel Postgres (Neon) + PostGIS, via Drizzle ORM |
 | Photos | Cloudflare R2, browser uploads via presigned S3 URLs |
-| Auth | better-auth — Google sign-in or a 24-hour single-use email magic link |
-| Email | Resend, called over its REST API |
+| Auth | better-auth — sign in with Telegram (OpenID Connect) only; no email, no passwords |
 | Maps | MapLibre GL + OpenFreeMap tiles — no key, no limits, commercial use allowed |
-| Geocoding | Nominatim, called once when a listing is saved |
+| Geocoding | Photon (komoot, OpenStreetMap data): suggestions while typing an address |
 
-**Why Postgres rather than SQLite/D1:** Continuum's later surfaces are
+**Why Postgres rather than SQLite/D1:** SimbaCasa's later surfaces are
 relational and geographic — "people within 20km, aged 30–45, into meditation,
 not blocked, not already seen". PostGIS answers that natively and indexes it
 with GiST. Housing needs the same machinery for "listings near this station",
@@ -64,8 +63,9 @@ The database needs PostGIS enabled once:
 CREATE EXTENSION IF NOT EXISTS postgis;
 ```
 
-The app works without any secrets: sign-in magic links print to the console
-instead of sending, and photo upload is the only feature that needs real keys.
+Signing in needs Telegram keys (see `.env.example`) and a public https
+address, since Telegram won't redirect to localhost: run a tunnel such as
+`ngrok http 4000` and register its URL with @BotFather.
 
 ### Deploying
 

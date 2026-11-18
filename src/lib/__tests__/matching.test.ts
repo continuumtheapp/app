@@ -198,6 +198,7 @@ describe("near misses", () => {
       search("2026-03-05", "2026-03-10", { maxPricePerNightCents: 5000 }))!;
     const s = near.shortfalls.find((x) => x.kind === "overBudget")!;
     expect(explainShortfall(s)).toBe("€50/night over your budget");
+    expect(explainShortfall(s, "GBP")).toBe("£50/night over your budget");
   });
 
   it("reports being too small", () => {

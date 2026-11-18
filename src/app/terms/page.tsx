@@ -1,4 +1,4 @@
-export const metadata = { title: "Terms · Continuum" };
+export const metadata = { title: "Terms · SimbaCasa" };
 
 export default function TermsPage() {
   return (
@@ -53,8 +53,8 @@ export default function TermsPage() {
 
       <Section title="Rental law">
         <p>
-          Subletting in Berlin has rules, and short-term letting has more of
-          them (Zweckentfremdungsverbot, among others). Whether you're allowed
+          Most cities have rules on subletting, and more on short-term letting
+          (in Berlin, the Zweckentfremdungsverbot, among others). Whether you're allowed
           to offer a place is between you, your landlord and the city. Please
           look into it before posting.
         </p>

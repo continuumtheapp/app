@@ -9,16 +9,15 @@ export interface AppEnv {
   DATABASE_URL: string;
   BETTER_AUTH_SECRET: string;
   BETTER_AUTH_URL: string;
-  GOOGLE_CLIENT_ID: string;
-  GOOGLE_CLIENT_SECRET: string;
-  RESEND_API_KEY: string;
-  EMAIL_FROM: string;
-  /** Identifies us to Nominatim, as its usage policy requires. */
-  CONTACT_EMAIL: string;
+  /** From @BotFather → your bot → Login Widget. */
+  TELEGRAM_CLIENT_ID: string;
+  TELEGRAM_CLIENT_SECRET: string;
   R2_ACCOUNT_ID: string;
   R2_ACCESS_KEY_ID: string;
   R2_SECRET_ACCESS_KEY: string;
   R2_BUCKET: string;
+  /** Private bucket for ID checks: no public access, EU jurisdiction. */
+  R2_ID_BUCKET: string;
   /** Public base URL photos are served from (R2 custom domain or r2.dev). */
   PHOTOS_BASE_URL: string;
 }
@@ -41,10 +40,6 @@ export function requireEnv<K extends keyof AppEnv>(key: K): string {
   return value;
 }
 
-export function isGoogleConfigured(): boolean {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-}
-
-export function isEmailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+export function isTelegramConfigured(): boolean {
+  return Boolean(process.env.TELEGRAM_CLIENT_ID && process.env.TELEGRAM_CLIENT_SECRET);
 }

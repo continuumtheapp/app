@@ -1,4 +1,4 @@
-import { formatPrice, type PricePeriod } from "@/lib/pricing";
+import { formatMoney, formatAllRates, quoteForStay, type Prices } from "@/lib/pricing";
 
 export function RoomTypeBadge({ roomType, flatmateCount }:
   { roomType: "whole_flat" | "shared"; flatmateCount: number | null }) {
@@ -26,13 +26,21 @@ export function FlintaBadge() {
   );
 }
 
-export function DepositBadge({ depositCents }: { depositCents: number }) {
+export function AnmeldungBadge() {
+  return <span className="badge bg-accent-soft text-accent-ink">Anmeldung possible</span>;
+}
+
+export function PetsBadge() {
+  return <span className="badge bg-accent-soft text-accent-ink">Pets allowed</span>;
+}
+
+export function DepositBadge({ depositCents, currency }: { depositCents: number; currency: string }) {
   if (depositCents === 0) {
     return <span className="badge bg-accent-soft text-accent-ink">No deposit</span>;
   }
   return (
     <span className="badge bg-paper text-ink-soft border border-line">
-      Deposit {formatPrice(depositCents, "night").split(" / ")[0]}
+      Deposit {formatMoney(depositCents, currency)}
     </span>
   );
 }
@@ -56,11 +64,21 @@ export function FlexibleNightsBadge({ nights }: { nights: number }) {
   );
 }
 
-export function PriceTag({ priceCents, pricePeriod }:
-  { priceCents: number; pricePeriod: PricePeriod }) {
-  return (
-    <span className="font-medium tabular-nums">
-      {formatPrice(priceCents, pricePeriod)}
-    </span>
-  );
+/**
+ * The headline price.
+ *
+ * Given a stay length, shows the best-value rate for that stay — a month-long
+ * search sees the monthly rate, not the nightly one. Without a stay, lists
+ * every rate the host quoted.
+ */
+export function PriceTag({ prices, currency, nights }: { prices: Prices; currency: string; nights?: number }) {
+  const quote = nights ? quoteForStay(prices, nights) : null;
+  if (quote) {
+    return (
+      <span className="font-medium tabular-nums">
+        {formatMoney(quote.rateCents, currency)} / {quote.period}
+      </span>
+    );
+  }
+  return <span className="font-medium tabular-nums">{formatAllRates(prices, currency)}</span>;
 }

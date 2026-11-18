@@ -17,10 +17,13 @@ export function SearchSummary({
   checkIn,
   checkOut,
   guests,
+  place,
 }: {
   checkIn: number;
   checkOut: number;
   guests: number;
+  /** The city searched, or null for everywhere. */
+  place: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const nights = checkOut - checkIn;
@@ -41,7 +44,7 @@ export function SearchSummary({
           <SearchIcon />
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium truncate">
-              {short(checkIn)} – {short(checkOut)}
+              {place ?? "Everywhere"} · {short(checkIn)} – {short(checkOut)}
             </span>
             <span className="block text-xs text-ink-faint">
               {nights} {nights === 1 ? "night" : "nights"} ·{" "}

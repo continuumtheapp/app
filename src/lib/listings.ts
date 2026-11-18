@@ -5,16 +5,30 @@
  * pruneFlexibleDays(): matching assumes stored blocks are maximal contiguous
  * runs, and SQLite cannot enforce that itself.
  */
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, ne, sql, count } from "drizzle-orm";
 import { getDb, getSql } from "@/db";
 import {
   listings, availabilityBlocks, flexibleDays, listingPhotos, users,
 } from "@/db/schema";
 import { mergeBlocks, pruneFlexibleDays, lastAvailableDay } from "./blocks";
-import { toPricePerNightCents } from "./pricing";
+import { cheapestPerNightCents } from "./pricing";
 import { toDayNumber, todayInBerlin } from "./dates";
+import { currencyFor } from "./currency";
 import type { ListingInput } from "./validation";
+import { MAX_ACTIVE_LISTINGS, TOO_MANY_LISTINGS, FAIR_RENT_PLEDGE } from "./listing-rules";
+
+export { MAX_ACTIVE_LISTINGS, TOO_MANY_LISTINGS, FAIR_RENT_PLEDGE };
 import type { Block } from "./matching";
+
+/** How many published listings this host has, leaving one out (when editing it). */
+export async function activeListingCount(hostId: string, exceptId?: number): Promise<number> {
+  const [row] = await getDb().select({ n: count() }).from(listings)
+    .where(and(
+      eq(listings.hostId, hostId), eq(listings.status, "published"),
+      ...(exceptId ? [ne(listings.id, exceptId)] : []),
+    ));
+  return Number(row?.n ?? 0);
+}
 
 export interface FullListing {
   id: number;
@@ -22,19 +36,27 @@ export interface FullListing {
   title: string;
   description: string | null;
   address: string;
+  city: string;
+  country: string;
+  currency: string;
   lat: number;
   lng: number;
-  priceCents: number;
-  pricePeriod: "night" | "week" | "month";
+  priceNightCents: number | null;
+  priceWeekCents: number | null;
+  priceMonthCents: number | null;
   pricePerNightCents: number;
   roomType: "whole_flat" | "shared";
   flatmateCount: number | null;
   maxGuests: number;
   flintaOnly: boolean;
   depositCents: number;
+  anmeldung: boolean;
+  petsAllowed: boolean;
   minNights: number | null;
   maxNights: number | null;
   status: string;
+  fairRentPledged: boolean;
+  telegramMessageId: number | null;
   blocks: Block[];
   flexibleDays: number[];
   photoKeys: string[];
@@ -64,12 +86,14 @@ export async function getListing(id: number): Promise<FullListing | null> {
 
   return {
     id: l.id, hostId: l.hostId, title: l.title, description: l.description,
-    address: l.address, lat: l.lat, lng: l.lng,
-    priceCents: l.priceCents, pricePeriod: l.pricePeriod,
-    pricePerNightCents: l.pricePerNightCents,
+    address: l.address, city: l.city, country: l.country, currency: l.currency, lat: l.lat, lng: l.lng,
+    priceNightCents: l.priceNightCents, priceWeekCents: l.priceWeekCents,
+    priceMonthCents: l.priceMonthCents, pricePerNightCents: l.pricePerNightCents,
     roomType: l.roomType, flatmateCount: l.flatmateCount, maxGuests: l.maxGuests,
     flintaOnly: l.flintaOnly, depositCents: l.depositCents,
+    anmeldung: l.anmeldung, petsAllowed: l.petsAllowed,
     minNights: l.minNights, maxNights: l.maxNights, status: l.status,
+    fairRentPledged: l.fairRentPledgedAt !== null, telegramMessageId: l.telegramMessageId,
     blocks: blocks.map((b) => ({ startDay: b.startDay, endDay: b.endDay })),
     flexibleDays: flex.map((f) => f.day).sort((a, b) => a - b),
     photoKeys: photos.map((p) => p.r2Key),
@@ -96,7 +120,7 @@ export async function getListingsByHost(hostId: string) {
 /** Insert or update a listing, normalising availability along the way. */
 export async function saveListing(
   input: ListingInput,
-  geo: { lat: number; lng: number },
+  geo: { lat: number; lng: number; city: string; country: string },
   hostId: string,
   existingId?: number,
 ): Promise<number> {
@@ -115,19 +139,30 @@ export async function saveListing(
     address: input.address,
     lat: geo.lat,
     lng: geo.lng,
+    city: geo.city,
+    country: geo.country,
+    // Prices are entered in the currency of the place's country.
+    currency: currencyFor(geo.country),
     // Kept in step with lat/lng; this is the column distance queries use.
     location: { lat: geo.lat, lng: geo.lng },
-    priceCents: input.priceCents,
-    pricePeriod: input.pricePeriod,
-    pricePerNightCents: toPricePerNightCents(input.priceCents, input.pricePeriod),
+    priceNightCents: input.priceNightCents,
+    priceWeekCents: input.priceWeekCents,
+    priceMonthCents: input.priceMonthCents,
+    // Cheapest rate per night, so budget filters are one indexed compare.
+    pricePerNightCents: cheapestPerNightCents(input),
     roomType: input.roomType,
     flatmateCount: input.flatmateCount,
     maxGuests: input.maxGuests,
     flintaOnly: input.flintaOnly,
     depositCents: input.depositCents,
+    // Registering your address is a German thing.
+    anmeldung: input.anmeldung && geo.country === "DE",
+    petsAllowed: input.petsAllowed,
     minNights: input.minNights,
     maxNights: input.maxNights,
     status: "published" as const,
+    // Kept from the first time they ticked it; the form requires it every save.
+    fairRentPledgedAt: sql`coalesce(${listings.fairRentPledgedAt}, now())`,
     updatedAt: now,
   };
 
@@ -137,7 +172,7 @@ export async function saveListing(
     id = existingId;
   } else {
     const inserted = await db.insert(listings)
-      .values({ ...values, createdAt: now })
+      .values({ ...values, fairRentPledgedAt: new Date(), createdAt: now })
       .returning({ id: listings.id });
     id = inserted[0].id;
   }
@@ -178,7 +213,7 @@ export async function setListingStatus(
  * Cheaper and more predictable than filtering on every search, and it means a
  * host sees their own listing marked expired rather than silently vanishing.
  */
-export async function expireStaleListings(): Promise<number> {
+export async function expireStaleListings(): Promise<number[]> {
   const today = todayInBerlin();
   const rows = await getSql()`
     UPDATE listings SET status = 'archived', updated_at = ${Date.now()}
@@ -189,5 +224,5 @@ export async function expireStaleListings(): Promise<number> {
       )
     RETURNING id
   `;
-  return rows.length;
+  return rows.map((r) => Number(r.id));
 }

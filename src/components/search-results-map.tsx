@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { MapPin } from "./listings-map";
 
@@ -15,6 +15,7 @@ const ListingsMap = dynamic(() => import("./listings-map").then((m) => m.Listing
 const DESKTOP_QUERY = "(min-width: 1024px)";
 import type { ResultListing } from "@/lib/search";
 import type { NearMiss } from "@/lib/matching";
+import { parseBbox } from "@/lib/bbox";
 
 export function SearchResultsMap({
   exact,
@@ -38,17 +39,25 @@ export function SearchResultsMap({
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  if (!isDesktop) return null;
+  // Memoised for the same reason as the mobile map: a new array each render
+  // rebuilds every marker.
+  const pins: MapPin[] = useMemo(
+    () => [
+      ...exact.map((l) => toPin(l, false)),
+      ...nearMisses.map((l) => toPin(l, true)),
+    ],
+    [exact, nearMisses],
+  );
 
-  const pins: MapPin[] = [
-    ...exact.map((l) => toPin(l, false)),
-    ...nearMisses.map((l) => toPin(l, true)),
-  ];
+  // Every hook must run before this: an early return above the useMemo changes
+  // the hook count between renders, which React rejects outright.
+  if (!isDesktop) return null;
 
   return (
     <ListingsMap
       pins={pins}
       className="size-full"
+      area={parseBbox(params.get("bbox"))}
       onSearchArea={(b) => {
         const next = new URLSearchParams(params);
         next.set("bbox", `${b.south},${b.west},${b.north},${b.east}`);
@@ -61,6 +70,6 @@ export function SearchResultsMap({
 function toPin(l: ResultListing, isNearMiss: boolean): MapPin {
   return {
     id: l.id, lat: l.lat, lng: l.lng, title: l.title,
-    priceCents: l.priceCents, pricePeriod: l.pricePeriod, isNearMiss,
+    pricePerNightCents: l.pricePerNightCents, currency: l.currency, isNearMiss,
   };
 }

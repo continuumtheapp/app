@@ -1,10 +1,9 @@
 "use client";
 
 import { createAuthClient } from "better-auth/react";
-import { magicLinkClient } from "better-auth/client/plugins";
 
 export const authClient = createAuthClient({
-  plugins: [magicLinkClient()],
+  // Telegram sign-in uses the built-in social flow; no client plugins needed.
 });
 
 export const { signIn, signOut, useSession } = authClient;

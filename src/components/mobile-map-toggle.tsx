@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ListingsMap, type MapPin } from "./listings-map";
 import { photoUrl } from "@/lib/photos";
-import { formatPrice } from "@/lib/pricing";
+import { formatAllRates } from "@/lib/pricing";
 import type { ResultListing } from "@/lib/search";
 import type { NearMiss } from "@/lib/matching";
+import { parseBbox } from "@/lib/bbox";
 
 /**
  * Mobile map view: a floating pill over the results that opens a full-screen
@@ -29,11 +30,18 @@ export function MobileMapToggle({
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ResultListing | null>(null);
 
-  const all = [...exact, ...nearMisses];
-  const pins: MapPin[] = [
-    ...exact.map((l) => toPin(l, false)),
-    ...nearMisses.map((l) => toPin(l, true)),
-  ];
+  const all = useMemo(() => [...exact, ...nearMisses], [exact, nearMisses]);
+
+  // Memoised: a fresh array each render re-ran the map's marker effect, which
+  // rebuilt and repainted every pin — wiping the selected styling the moment
+  // it was applied.
+  const pins: MapPin[] = useMemo(
+    () => [
+      ...exact.map((l) => toPin(l, false)),
+      ...nearMisses.map((l) => toPin(l, true)),
+    ],
+    [exact, nearMisses],
+  );
 
   // Stop the page behind the map from scrolling while it's open.
   useEffect(() => {
@@ -73,6 +81,7 @@ export function MobileMapToggle({
       <ListingsMap
         pins={pins}
         className="size-full"
+        area={parseBbox(params.get("bbox"))}
         selectedId={selected?.id ?? null}
         onPinClick={(id) => setSelected(all.find((l) => l.id === id) ?? null)}
         onSearchArea={(b) => {
@@ -128,7 +137,7 @@ function SelectedCard({ listing, onClose }: { listing: ResultListing; onClose: (
           <div className="min-w-0 flex-1 pr-6">
             <h3 className="font-medium text-sm leading-snug line-clamp-2">{listing.title}</h3>
             <p className="mt-1 text-sm font-medium tabular-nums">
-              {formatPrice(listing.priceCents, listing.pricePeriod)}
+              {formatAllRates(listing, listing.currency)}
             </p>
             <p className="text-xs text-ink-faint">
               Sleeps {listing.maxGuests}
@@ -146,7 +155,7 @@ function SelectedCard({ listing, onClose }: { listing: ResultListing; onClose: (
 function toPin(l: ResultListing, isNearMiss: boolean): MapPin {
   return {
     id: l.id, lat: l.lat, lng: l.lng, title: l.title,
-    priceCents: l.priceCents, pricePeriod: l.pricePeriod, isNearMiss,
+    pricePerNightCents: l.pricePerNightCents, currency: l.currency, isNearMiss,
   };
 }
 

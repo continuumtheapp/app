@@ -74,7 +74,7 @@ const SEARCHES: (SearchParams & { label: string })[] = STAYS.flatMap(([ci, co]) 
   [1, 3].flatMap((guests) =>
     [null, 6000].map((budget) => ({
       checkIn: d(ci), checkOut: d(co), guests, maxPricePerNightCents: budget,
-      roomType: null, noDeposit: false, flintaOnly: false, bbox: null, near: null,
+      roomType: null, flintaOnly: false, anmeldung: false, pets: false, bbox: null, near: null,
       label: `${ci}->${co} guests=${guests} budget=${budget}`,
     })),
   ),

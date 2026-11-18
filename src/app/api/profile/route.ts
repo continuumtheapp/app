@@ -1,18 +1,14 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
-import { contactSchema } from "@/lib/validation";
+import { profileSchema } from "@/lib/validation";
 import { requireUser, authErrorResponse } from "@/lib/session";
+import { photoUrl } from "@/lib/photos";
 
 export async function PUT(request: Request) {
   try {
     const user = await requireUser();
-    const body = (await request.json()) as { name?: string; contactMethod?: string; contactHandle?: string };
-
-    const parsed = contactSchema.safeParse({
-      contactMethod: body.contactMethod,
-      contactHandle: body.contactHandle,
-    });
+    const parsed = profileSchema.safeParse(await request.json());
     if (!parsed.success) {
       return Response.json(
         { error: parsed.error.issues[0]?.message ?? "Check that and try again." },
@@ -20,10 +16,11 @@ export async function PUT(request: Request) {
       );
     }
 
+    const { name, bio, avatarKey } = parsed.data;
     await getDb().update(users).set({
-      name: body.name?.trim().slice(0, 80) || null,
-      contactMethod: parsed.data.contactMethod,
-      contactHandle: parsed.data.contactHandle,
+      name: name || null,
+      bio: bio || null,
+      ...(avatarKey !== undefined ? { image: avatarKey ? photoUrl(avatarKey) : null } : {}),
       updatedAt: new Date(),
     }).where(eq(users.id, user.id));
 

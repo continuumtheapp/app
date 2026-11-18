@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { runSearch, parseBbox } from "@/lib/search";
+import { currentUser, isMember } from "@/lib/session";
+import { basicsOnly } from "@/lib/visibility";
 import { searchSchema } from "@/lib/validation";
 import { toDayNumber } from "@/lib/dates";
 import { SearchSummary } from "@/components/search-summary";
@@ -16,8 +18,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const raw = await searchParams;
   const parsed = searchSchema.safeParse({
     checkIn: raw.checkIn, checkOut: raw.checkOut, guests: raw.guests,
-    maxPrice: raw.maxPrice ?? null, roomType: raw.roomType ?? null,
-    noDeposit: raw.noDeposit === "1", flintaOnly: raw.flintaOnly === "1",
+    // A budget is in the searched city's currency, so it needs a city.
+    maxPrice: raw.city ? raw.maxPrice ?? null : null, roomType: raw.roomType ?? null,
+    flintaOnly: raw.flintaOnly === "1",
+    anmeldung: raw.anmeldung === "1", pets: raw.pets === "1",
     bbox: raw.bbox ?? null,
   });
 
@@ -38,17 +42,23 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     guests: q.guests,
     maxPricePerNightCents: q.maxPrice === null ? null : q.maxPrice * 100,
     roomType: q.roomType,
-    noDeposit: q.noDeposit,
     flintaOnly: q.flintaOnly,
+    anmeldung: q.anmeldung,
+    pets: q.pets,
     bbox: parseBbox(q.bbox),
     near: null,
   });
 
-  const { exact, nearMisses, checkIn, checkOut } = results;
+  // Without an approved account: the area and a rough pin, not the address.
+  const viewer = await currentUser().catch(() => null);
+  const full = viewer !== null && isMember(viewer) && !viewer.isBanned;
+  const { checkIn, checkOut } = results;
+  const exact = full ? results.exact : results.exact.map(basicsOnly);
+  const nearMisses = full ? results.nearMisses : results.nearMisses.map(basicsOnly);
   const nothing = exact.length === 0 && nearMisses.length === 0;
 
   return (
-    <Shell checkIn={checkIn} checkOut={checkOut} guests={q.guests}>
+    <Shell checkIn={checkIn} checkOut={checkOut} guests={q.guests} place={typeof raw.city === "string" ? raw.city : null}>
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-6">
         <div className="min-w-0">
           {nothing ? (
@@ -99,15 +109,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 }
 
 function Shell({
-  children, checkIn, checkOut, guests,
+  children, checkIn, checkOut, guests, place,
 }: {
-  children: React.ReactNode; checkIn: number; checkOut: number; guests: number;
+  children: React.ReactNode; checkIn: number; checkOut: number; guests: number; place: string | null;
 }) {
   return (
     // Bottom padding on mobile so the floating Map pill never covers the last card.
     <div className="mx-auto max-w-6xl px-4 py-4 sm:py-6 pb-24 lg:pb-6">
       <Suspense fallback={<div className="card h-16 lg:h-32 animate-pulse" />}>
-        <SearchSummary checkIn={checkIn} checkOut={checkOut} guests={guests} />
+        <SearchSummary checkIn={checkIn} checkOut={checkOut} guests={guests} place={place} />
       </Suspense>
       <div className="mt-4 sm:mt-6">{children}</div>
     </div>
@@ -120,9 +130,12 @@ function EmptyState() {
       <p className="font-medium">Nothing here for those dates.</p>
       <p className="mt-1.5 text-sm text-ink-soft max-w-sm mx-auto">
         Try widening the dates or raising the budget — or post what you're
-        looking for in the group chat.
+        looking for and check back as new places come in.
       </p>
-      <Link href="/" className="btn btn-secondary mt-5">Start over</Link>
+      <div className="mt-5 btn-row max-w-sm mx-auto">
+        <Link href="/requests/new" className="btn btn-primary">Post what you need</Link>
+        <Link href="/" className="btn btn-secondary">Start over</Link>
+      </div>
     </div>
   );
 }

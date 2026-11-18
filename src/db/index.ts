@@ -14,7 +14,7 @@ const connectionString = process.env.DATABASE_URL;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __continuumSql: ReturnType<typeof postgres> | undefined;
+  var __simbacasaSql: ReturnType<typeof postgres> | undefined;
 }
 
 function client() {
@@ -26,8 +26,8 @@ function client() {
   if (process.env.NODE_ENV === "production") {
     return postgres(connectionString, { prepare: false });
   }
-  globalThis.__continuumSql ??= postgres(connectionString, { prepare: false });
-  return globalThis.__continuumSql;
+  globalThis.__simbacasaSql ??= postgres(connectionString, { prepare: false });
+  return globalThis.__simbacasaSql;
 }
 
 export function getDb() {

@@ -21,8 +21,10 @@ export interface SearchParams {
   guests: number;
   maxPricePerNightCents: number | null;
   roomType: "whole_flat" | "shared" | null;
-  noDeposit: boolean;
   flintaOnly: boolean;
+  /** Hard requirements, like FLINTA: never relaxed. */
+  anmeldung: boolean;
+  pets: boolean;
   /** Map viewport, when the seeker has panned to "search this area". */
   bbox: { south: number; north: number; west: number; east: number } | null;
   /** Radius search: everything within `radiusM` metres of a point. */
@@ -32,9 +34,10 @@ export interface SearchParams {
 /** Columns needed to render a result card. Kept explicit to avoid SELECT *. */
 const LISTING_COLUMNS = `
   l.id, l.host_id, l.title, l.description, l.address, l.lat, l.lng,
-  l.price_cents, l.price_period, l.price_per_night_cents,
+  l.price_night_cents, l.price_week_cents, l.price_month_cents,
+  l.price_per_night_cents, l.currency,
   l.room_type, l.flatmate_count, l.max_guests,
-  l.flinta_only, l.deposit_cents, l.min_nights, l.max_nights,
+  l.flinta_only, l.deposit_cents, l.anmeldung, l.pets_allowed, l.min_nights, l.max_nights,
   l.status, l.created_at, l.updated_at
 `;
 
@@ -68,12 +71,17 @@ function commonFilters(
   if (p.roomType !== null) {
     clauses.push(`l.room_type = ${q.bind(p.roomType)}`);
   }
-  if (p.noDeposit) {
-    clauses.push("l.deposit_cents = 0");
-  }
   if (p.flintaOnly) {
     // An eligibility boundary, not a preference: never relaxed, never widened.
     clauses.push("l.flinta_only = true");
+  }
+  // Also eligibility, not preference: a place without Anmeldung is no near
+  // miss for someone who needs one.
+  if (p.anmeldung) {
+    clauses.push("l.anmeldung = true");
+  }
+  if (p.pets) {
+    clauses.push("l.pets_allowed = true");
   }
   if (p.near) {
     // True distance on the spheroid, index-backed by the GiST index on location.

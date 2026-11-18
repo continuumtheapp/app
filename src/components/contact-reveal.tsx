@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 interface Contact {
-  method: "telegram" | "whatsapp";
+  method: "telegram";
   handle: string;
   url: string;
   hostName: string | null;
@@ -18,10 +18,12 @@ interface Contact {
 export function ContactReveal({
   listingId,
   signedIn,
+  member,
   hasContact,
 }: {
   listingId: number;
   signedIn: boolean;
+  member: boolean;
   hasContact: boolean;
 }) {
   const [contact, setContact] = useState<Contact | null>(null);
@@ -32,7 +34,18 @@ export function ContactReveal({
     return (
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm text-ink-soft">Sign in to get in touch with the host.</p>
-        <Link href={`/sign-in?next=/listing/${listingId}`} className="btn btn-primary">Sign in</Link>
+        <Link href={`/sign-in?next=/listing/${listingId}`} className="btn btn-primary w-full sm:w-auto">Sign in</Link>
+      </div>
+    );
+  }
+
+  if (!member) {
+    return (
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <p className="text-sm text-ink-soft">
+          Only members can contact hosts. An admin needs to approve you first.
+        </p>
+        <Link href="/join" className="btn btn-secondary w-full sm:w-auto">Your membership</Link>
       </div>
     );
   }
@@ -41,22 +54,22 @@ export function ContactReveal({
     return (
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm text-ink-soft">
-          Add your own Telegram or WhatsApp first, so hosts can reply to you.
+          Set a Telegram username first, so hosts can reply to you.
         </p>
-        <Link href="/profile" className="btn btn-primary">Add contact</Link>
+        <Link href="/profile" className="btn btn-primary w-full sm:w-auto">How to</Link>
       </div>
     );
   }
 
   if (contact) {
-    const label = contact.method === "telegram" ? "Telegram" : "WhatsApp";
+    const label = "Telegram";
     return (
       <div>
         <p className="text-sm text-ink-soft">
           Message {contact.hostName ?? "the host"} on {label}:
         </p>
         <a href={contact.url} target="_blank" rel="noopener noreferrer"
-           className="btn btn-primary mt-3">
+           className="btn btn-primary w-full sm:w-auto mt-3">
           Open {label}
         </a>
         <p className="mt-2 text-xs text-ink-faint">{contact.handle}</p>
@@ -83,7 +96,7 @@ export function ContactReveal({
         </p>
         {error && <p className="mt-1.5 text-xs text-flinta">{error}</p>}
       </div>
-      <button onClick={reveal} disabled={loading} className="btn btn-primary">
+      <button onClick={reveal} disabled={loading} className="btn btn-primary w-full sm:w-auto">
         {loading ? "…" : "Show contact"}
       </button>
     </div>

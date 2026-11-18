@@ -9,13 +9,12 @@ export function ReportButton({ listingId }: { listingId: number }) {
   const [error, setError] = useState<string | null>(null);
 
   if (state === "sent") {
-    return <p className="text-xs text-ink-faint">Thanks — we'll take a look.</p>;
+    return <p className="text-sm text-ink-soft">Thanks — we'll take a look.</p>;
   }
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)}
-              className="text-xs text-ink-faint hover:text-ink-soft underline underline-offset-2">
+      <button onClick={() => setOpen(true)} className="btn btn-secondary w-full sm:w-auto">
         Report this listing
       </button>
     );
@@ -46,7 +45,7 @@ export function ReportButton({ listingId }: { listingId: number }) {
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="A scam, a duplicate, something offensive…" />
       {error && <p className="mt-1.5 text-xs text-flinta">{error}</p>}
-      <div className="mt-3 flex gap-2 justify-end">
+      <div className="mt-3 btn-row">
         <button type="button" onClick={() => setOpen(false)} className="btn btn-secondary">
           Cancel
         </button>

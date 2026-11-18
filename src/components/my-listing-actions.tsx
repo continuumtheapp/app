@@ -20,16 +20,14 @@ export function MyListingActions({ id, status }: { id: number; status: string })
   }
 
   return (
-    <div className="flex flex-col items-end gap-1.5 shrink-0 text-sm">
-      <Link href={`/listing/${id}/edit`} className="btn btn-secondary py-1.5 text-sm">Edit</Link>
+    <div className="btn-row">
+      <Link href={`/listing/${id}/edit`} className="btn btn-secondary">Edit</Link>
       {status === "published" ? (
-        <button onClick={() => setStatus("taken")} disabled={busy}
-                className="text-xs text-ink-faint hover:text-ink-soft underline underline-offset-2">
+        <button onClick={() => setStatus("taken")} disabled={busy} className="btn btn-secondary">
           Mark as taken
         </button>
       ) : status === "taken" ? (
-        <button onClick={() => setStatus("published")} disabled={busy}
-                className="text-xs text-ink-faint hover:text-ink-soft underline underline-offset-2">
+        <button onClick={() => setStatus("published")} disabled={busy} className="btn btn-primary">
           Available again
         </button>
       ) : null}

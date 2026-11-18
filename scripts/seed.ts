@@ -21,13 +21,31 @@ const MS_PER_DAY = 86_400_000;
 const today = Math.floor(Date.now() / MS_PER_DAY);
 const DAY0 = today + 7; // first availability starts a week out
 
+// Members with and without a Telegram username, and the invite relations an
+// admin sees: Dara joined through Anna's link, Eli through Cleo's. Finn has
+// asked to join through Cleo's link and is waiting for approval; Gil has
+// signed in but not asked yet, to try the join form.
 const HOSTS = [
-  { id: "u_anna", email: "anna@example.de", name: "Anna", method: "telegram", handle: "@anna_b", admin: true },
-  { id: "u_ben", email: "ben@example.de", name: "Ben", method: "whatsapp", handle: "+4917012345678", admin: false },
-  { id: "u_cleo", email: "cleo@example.de", name: "Cleo", method: "telegram", handle: "@cleo_k", admin: false },
-  { id: "u_dara", email: "dara@example.de", name: "Dara", method: "telegram", handle: "@dara_m", admin: false },
-  { id: "u_eli", email: "eli@example.de", name: "Eli", method: "whatsapp", handle: "+4917098765432", admin: false },
-];
+  { id: "u_anna", email: "u_anna@users.telegram.invalid", name: "Anna", telegram: "@anna_b", admin: true,
+    status: "member", invitedBy: null, invite: null,
+    bio: "Moved to Berlin in 2016. I run the SimbaCasa group and rent out my room when I travel." },
+  { id: "u_ben", email: "u_ben@users.telegram.invalid", name: "Ben", telegram: null, admin: false,
+    status: "member", invitedBy: null, invite: null, bio: null },
+  { id: "u_cleo", email: "u_cleo@users.telegram.invalid", name: "Cleo", telegram: "@cleo_k", admin: false,
+    status: "member", invitedBy: null, invite: null,
+    bio: "Illustrator, quiet, cooks a lot. Usually looking for a room for a few weeks in summer." },
+  { id: "u_dara", email: "u_dara@users.telegram.invalid", name: "Dara", telegram: "@dara_m", admin: false,
+    status: "member", invitedBy: "u_anna", invite: null, bio: "Baker on Weserstraße. Two cats, early riser." },
+  { id: "u_eli", email: "u_eli@users.telegram.invalid", name: "Eli", telegram: null, admin: false,
+    status: "member", invitedBy: "u_cleo", invite: null, bio: "PhD student at the TU. Looking for something long-term in Wedding." },
+  { id: "u_finn", email: "u_finn@users.telegram.invalid", name: "Finn", telegram: "@finn_r", admin: false,
+    status: "pending", invitedBy: "u_cleo", invite: null, bio: "Just moved from Hamburg for a job at a studio. Tidy, plays guitar (quietly)." },
+  { id: "u_gil", email: "u_gil@users.telegram.invalid", name: "Gil", telegram: "@gil_t", admin: false,
+    status: "pending", invitedBy: null, invite: null, bio: null },
+] as const;
+/** Only approved members post; Finn is still waiting. */
+const MEMBERS = HOSTS.filter((h) => h.status === "member");
+
 
 const KIEZ = [
   ["Neukölln", 52.481, 13.435], ["Kreuzberg", 52.498, 13.403],
@@ -59,23 +77,30 @@ let seed = 7;
 const rand = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
 const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
 
+/** Can publish straight away. Dara is a member without an ID check, to try that flow. */
+const ID_CHECKED = new Set(["u_anna", "u_ben", "u_cleo", "u_eli"]);
+
 async function main() {
   console.log("Clearing existing data…");
   await sql`TRUNCATE contact_reveals, reports, listing_photos, flexible_days,
             availability_blocks, listings, sessions, accounts, verifications, users CASCADE`;
 
   for (const h of HOSTS) {
-    await sql`INSERT INTO users (id, email, email_verified, name, contact_method,
-                contact_handle, is_admin, is_banned, created_at, updated_at)
-              VALUES (${h.id}, ${h.email}, true, ${h.name}, ${h.method},
-                ${h.handle}, ${h.admin}, false, ${Date.now()}, ${Date.now()})`;
+    await sql`INSERT INTO users (id, email, email_verified, name, telegram_handle,
+                bio, member_status, invite_code, invited_by_id, join_requested_at,
+                is_admin, is_banned, id_check_status, id_checked_at, created_at, updated_at)
+              VALUES (${h.id}, ${h.email}, true, ${h.name}, ${h.telegram},
+                ${h.bio}, ${h.status}, ${h.invite}, ${h.invitedBy},
+                ${h.invitedBy ? new Date() : null}, ${h.admin}, false,
+                ${ID_CHECKED.has(h.id) ? "verified" : "none"}, ${ID_CHECKED.has(h.id) ? new Date() : null},
+                now(), now())`;
   }
 
   let blockCount = 0;
   let flexCount = 0;
 
   for (let i = 1; i <= 30; i++) {
-    const host = HOSTS[i % HOSTS.length];
+    const host = MEMBERS[i % MEMBERS.length];
     const [area, baseLat, baseLng] = KIEZ[i % KIEZ.length];
     const lat = baseLat + (rand() - 0.5) * 0.024;
     const lng = baseLng + (rand() - 0.5) * 0.036;
@@ -84,13 +109,21 @@ async function main() {
     const flatmates = shared ? pick([1, 1, 2, 2, 3]) : null;
     const guests = shared ? pick([1, 1, 2]) : pick([2, 3, 4]);
 
-    const period = pick(["night", "week", "month", "month"] as const);
-    const price = {
-      night: pick([35, 40, 45, 50, 55, 65, 80]),
-      week: pick([220, 260, 300, 350, 400]),
-      month: pick([550, 650, 700, 800, 900, 1100]),
-    }[period] * 100;
-    const perNight = Math.round(price / { night: 1, week: 7, month: 30 }[period]);
+    // Most hosts quote one or two rates; some quote all three. Longer periods
+    // are priced cheaper per night, as they are in reality.
+    const nightly = pick([35, 40, 45, 50, 55, 65, 80]) * 100;
+    const shape = i % 4;
+    const priceNight = shape === 3 ? null : nightly;
+    const priceWeek = shape === 1 || shape === 2 ? Math.round(nightly * 7 * 0.85) : null;
+    const priceMonth = shape === 2 || shape === 3 ? Math.round(nightly * 30 * 0.6) : null;
+
+    const perNight = Math.min(
+      ...[
+        priceNight,
+        priceWeek === null ? null : Math.round(priceWeek / 7),
+        priceMonth === null ? null : Math.round(priceMonth / 30),
+      ].filter((n): n is number => n !== null),
+    );
 
     // A spread of host stay-length constraints, including none at all.
     const [minN, maxN] = [
@@ -104,13 +137,17 @@ async function main() {
 
     const [{ id }] = await sql<{ id: number }[]>`
       INSERT INTO listings (host_id, title, description, address, lat, lng, location,
-        price_cents, price_period, price_per_night_cents, room_type, flatmate_count,
-        max_guests, flinta_only, deposit_cents, min_nights, max_nights, status,
+        price_night_cents, price_week_cents, price_month_cents,
+        price_per_night_cents, room_type, flatmate_count,
+        max_guests, flinta_only, deposit_cents, anmeldung, pets_allowed,
+        min_nights, max_nights, status,
         created_at, updated_at)
       VALUES (${host.id}, ${title}, ${description}, ${address}, ${lat}, ${lng},
         ST_MakePoint(${lng}, ${lat})::geography,
-        ${price}, ${period}, ${perNight}, ${shared ? "shared" : "whole_flat"},
+        ${priceNight}, ${priceWeek}, ${priceMonth},
+        ${perNight}, ${shared ? "shared" : "whole_flat"},
         ${flatmates}, ${guests}, ${i % 7 === 0}, ${i % 4 === 0 ? 0 : pick([200, 300, 500]) * 100},
+        ${i % 3 === 0}, ${i % 5 === 0},
         ${minN}, ${maxN}, 'published', ${Date.now()}, ${Date.now()})
       RETURNING id`;
 

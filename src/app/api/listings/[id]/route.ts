@@ -1,11 +1,15 @@
 import { eq } from "drizzle-orm";
+import { after } from "next/server";
+import { syncListingPost, removeListingPost } from "@/lib/bot";
 import { getDb } from "@/db";
 import { listings } from "@/db/schema";
 import { listingSchema } from "@/lib/validation";
-import { saveListing, getListing, setListingStatus } from "@/lib/listings";
-import { geocodeBerlinAddress } from "@/lib/geo";
+import {
+  saveListing, getListing, setListingStatus,
+  activeListingCount, MAX_ACTIVE_LISTINGS, TOO_MANY_LISTINGS,
+} from "@/lib/listings";
+import { geocodeAddress } from "@/lib/geo";
 import { requireContactableUser, authErrorResponse } from "@/lib/session";
-import { requireEnv } from "@/lib/env";
 
 export async function PUT(
   request: Request,
@@ -29,16 +33,23 @@ export async function PUT(
       );
     }
 
+    // Saving an archived or taken place puts it back up, so then it counts
+    // against the limit like a new one. Editing one that's up doesn't.
+    if (existing.status !== "published" && await activeListingCount(user.id, id) >= MAX_ACTIVE_LISTINGS) {
+      return Response.json({ error: TOO_MANY_LISTINGS }, { status: 409 });
+    }
+
     // Only re-geocode when the address actually changed: it's a network call
     // to a rate-limited service, and the old coordinates are still correct.
-    let geo = { lat: existing.lat, lng: existing.lng };
+    let geo = { lat: existing.lat, lng: existing.lng, city: existing.city, country: existing.country };
     if (parsed.data.address !== existing.address) {
-      const result = await geocodeBerlinAddress(parsed.data.address, requireEnv("CONTACT_EMAIL"));
+      const result = await geocodeAddress(parsed.data.address);
       if (!result.ok) return Response.json({ error: result.message }, { status: 400 });
-      geo = { lat: result.result.lat, lng: result.result.lng };
+      geo = result.result;
     }
 
     await saveListing(parsed.data, geo, user.id, id);
+    after(() => syncListingPost(id));
     return Response.json({ id });
   } catch (error) {
     return authErrorResponse(error) ?? Response.json(
@@ -61,7 +72,11 @@ export async function PATCH(
       return Response.json({ error: "Unknown status." }, { status: 400 });
     }
 
+    if (status === "published" && await activeListingCount(user.id, id) >= MAX_ACTIVE_LISTINGS) {
+      return Response.json({ error: TOO_MANY_LISTINGS }, { status: 409 });
+    }
     await setListingStatus(id, user.id, status);
+    after(() => syncListingPost(id));
     return Response.json({ ok: true });
   } catch (error) {
     return authErrorResponse(error) ?? Response.json(
@@ -86,6 +101,7 @@ export async function DELETE(
 
     // Cascades to blocks, flexible days and photos via the schema's foreign keys.
     await getDb().delete(listings).where(eq(listings.id, id));
+    after(() => removeListingPost(existing.telegramMessageId));
     return Response.json({ ok: true });
   } catch (error) {
     return authErrorResponse(error) ?? Response.json(

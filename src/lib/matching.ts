@@ -17,6 +17,7 @@
  * Intervals are half-open [start, end). See src/lib/dates.ts.
  */
 
+import { formatMoney } from "./currency";
 import { formatRange, fromDayNumber } from "./dates";
 
 /* -------------------------------------------------------------- tuning */
@@ -279,8 +280,6 @@ function shortfallPenalty(s: Shortfall): number {
 
 /* ------------------------------------------------------------------ copy */
 
-const euros = (cents: number) =>
-  `€${(cents / 100).toLocaleString("de-DE", { maximumFractionDigits: 0 })}`;
 const dayName = (day: number) =>
   new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "short" })
     .format(new Date(fromDayNumber(day) + "T00:00:00Z"));
@@ -288,7 +287,7 @@ const dayName = (day: number) =>
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** Human explanation of a shortfall, shown on the near-miss card. */
-export function explainShortfall(s: Shortfall): string {
+export function explainShortfall(s: Shortfall, currency = "EUR"): string {
   switch (s.kind) {
     case "partialAvailability":
       return `Free ${s.availableNights} of your ${plural(s.wantedNights, "night")} ` +
@@ -304,7 +303,7 @@ export function explainShortfall(s: Shortfall): string {
     case "hostMaxStay":
       return `Host hosts max ${plural(s.hostMaxNights, "night")}, you want ${s.wantedNights}`;
     case "overBudget":
-      return `${euros(s.overByCents)}/night over your budget`;
+      return `${formatMoney(s.overByCents, currency)}/night over your budget`;
     case "tooSmall":
       return `Sleeps ${s.sleeps}, you need ${s.needed}`;
   }

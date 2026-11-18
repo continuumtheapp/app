@@ -1,24 +1,27 @@
 /**
- * Authentication: Google sign-in or an email magic link.
+ * Authentication: sign in with Telegram.
  *
- * No passwords anywhere. Beyond being friendlier, this sidesteps password
- * hashing, which is genuinely awkward under Workers' CPU limits.
+ * The community lives on Telegram, so the Telegram account is the identity:
+ * it is the only way to sign in. No passwords, no email. See
+ * src/lib/telegram.ts for how Telegram's ID token becomes a user, and
+ * syncTelegramIdentity() below for how the @username stays current.
  *
- * Magic links last 24 hours rather than the usual 15 minutes: this is a
- * community noticeboard, not a bank, and a link that dies before someone gets
- * back to their inbox is the likelier failure. Tokens are single-use — the
- * plugin consumes them atomically on first verification.
+ * Under `next dev` only, devSignIn() also lets you sign in as a seed member,
+ * since Telegram can't redirect back to localhost. See src/lib/dev-sign-in.ts.
  */
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { magicLink } from "better-auth/plugins";
+import { genericOAuth } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as schema from "@/db/schema";
-import { isEmailConfigured, isGoogleConfigured } from "./env";
-import { sendMagicLinkEmail } from "./email";
-
-export const MAGIC_LINK_EXPIRY_SECONDS = 60 * 60 * 24; // 24 hours
+import { isTelegramConfigured } from "./env";
+import { devSignIn, isDevSignInEnabled } from "./dev-sign-in";
+import {
+  TELEGRAM_PROVIDER_ID, TELEGRAM_DISCOVERY_URL, TELEGRAM_SCOPES,
+  telegramUserInfo, telegramIdentity, claimsFromStoredIdToken, type TelegramClaims,
+} from "./telegram";
 
 export function getAuth() {
   return betterAuth({
@@ -35,26 +38,24 @@ export function getAuth() {
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL: process.env.BETTER_AUTH_URL,
 
-    // Passwords are deliberately not an option.
+    // Telegram is the only way in: no passwords, no email links.
     emailAndPassword: { enabled: false },
 
-    socialProviders: isGoogleConfigured()
-      ? {
-          google: {
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-          },
-        }
-      : {},
-
-    user: {
-      additionalFields: {
-        contactMethod: { type: "string", required: false, input: false },
-        contactHandle: { type: "string", required: false, input: false },
-        isAdmin: { type: "boolean", required: false, input: false, defaultValue: false },
-        isBanned: { type: "boolean", required: false, input: false, defaultValue: false },
-      },
+    databaseHooks: {
+      session: { create: { after: (session) => syncTelegramIdentity(session.userId) } },
     },
+
+    /**
+     * telegramId, telegramHandle, bio, memberStatus, invitedById, isAdmin and isBanned are
+     * deliberately NOT declared as additionalFields.
+     *
+     * They are SimbaCasa's own columns, written by syncTelegramIdentity(), the
+     * profile form and the admin actions, and read through Drizzle —
+     * better-auth never needs them.
+     * Declaring them made it write an empty string for contactMethod while
+     * leaving contactHandle null, which violates ck_users_contact_paired and
+     * made every Google sign-in fail with an internal_server_error.
+     */
 
     session: {
       expiresIn: 60 * 60 * 24 * 60, // 60 days
@@ -63,25 +64,54 @@ export function getAuth() {
     },
 
     plugins: [
-      magicLink({
-        expiresIn: MAGIC_LINK_EXPIRY_SECONDS,
-        sendMagicLink: async ({ email, url }) => {
-          if (!isEmailConfigured()) {
-            // Without a mail provider the link would vanish silently. In dev,
-            // print it so sign-in still works; in production, fail loudly.
-            if (process.env.NODE_ENV === "production") {
-              throw new Error("RESEND_API_KEY is not configured; cannot send magic links.");
-            }
-            console.warn(`\n[dev] Magic link for ${email}:\n${url}\n`);
-            return;
-          }
-          await sendMagicLinkEmail(email, url);
-        },
-      }),
+      ...(isTelegramConfigured()
+        ? [genericOAuth({
+            config: [{
+              providerId: TELEGRAM_PROVIDER_ID,
+              discoveryUrl: TELEGRAM_DISCOVERY_URL,
+              // Refuse to start rather than fall back to unverified tokens.
+              requireIdTokenVerification: true,
+              clientId: process.env.TELEGRAM_CLIENT_ID!,
+              clientSecret: process.env.TELEGRAM_CLIENT_SECRET!,
+              authentication: "basic",
+              scopes: TELEGRAM_SCOPES,
+              pkce: true,
+              // Telegram has no userinfo endpoint. The ID token was verified
+              // against Telegram's keys before this runs.
+              getUserInfo: async (tokens) =>
+                tokens.idToken
+                  ? telegramUserInfo(claimsFromStoredIdToken(tokens.idToken) ?? {})
+                  : null,
+            }],
+          })]
+        : []),
+      ...(isDevSignInEnabled() ? [devSignIn()] : []),
       // Must stay last: it writes Set-Cookie headers for Next server actions.
       nextCookies(),
     ],
   });
 }
 
-export type Auth = ReturnType<typeof getAuth>;
+/**
+ * Copy the Telegram ID and @username onto the user, on every sign-in.
+ *
+ * Usernames can change or be removed in Telegram, so a copy taken once would
+ * go stale. Reads the ID token better-auth stored on the account at sign-in.
+ */
+async function syncTelegramIdentity(userId: string): Promise<void> {
+  const db = getDb();
+  const [account] = await db.select({ idToken: schema.accounts.idToken })
+    .from(schema.accounts)
+    .where(and(eq(schema.accounts.userId, userId),
+      eq(schema.accounts.providerId, TELEGRAM_PROVIDER_ID)))
+    .limit(1);
+  const claims: TelegramClaims | null = account?.idToken
+    ? claimsFromStoredIdToken(account.idToken)
+    : null;
+  if (!claims) return;
+
+  const { telegramId, telegramHandle } = telegramIdentity(claims);
+  await db.update(schema.users)
+    .set({ telegramHandle, ...(telegramId !== null ? { telegramId } : {}), updatedAt: new Date() })
+    .where(eq(schema.users.id, userId));
+}

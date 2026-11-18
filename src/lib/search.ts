@@ -24,14 +24,18 @@ interface ListingRow {
   address: string;
   lat: number;
   lng: number;
-  price_cents: number;
-  price_period: "night" | "week" | "month";
+  price_night_cents: number | null;
+  price_week_cents: number | null;
+  price_month_cents: number | null;
   price_per_night_cents: number;
   room_type: "whole_flat" | "shared";
   flatmate_count: number | null;
   max_guests: number;
   flinta_only: boolean;
+  anmeldung: boolean;
+  pets_allowed: boolean;
   deposit_cents: number;
+  currency: string;
   min_nights: number | null;
   max_nights: number | null;
   status: string;
@@ -45,14 +49,19 @@ export interface ResultListing {
   description: string | null;
   lat: number;
   lng: number;
-  priceCents: number;
-  pricePeriod: "night" | "week" | "month";
+  priceNightCents: number | null;
+  priceWeekCents: number | null;
+  priceMonthCents: number | null;
   pricePerNightCents: number;
+  /** ISO 4217: every price above is in it. */
+  currency: string;
   roomType: "whole_flat" | "shared";
   flatmateCount: number | null;
   maxGuests: number;
   flintaOnly: boolean;
   depositCents: number;
+  anmeldung: boolean;
+  petsAllowed: boolean;
   minNights: number | null;
   maxNights: number | null;
   blocks: Block[];
@@ -106,13 +115,17 @@ export async function runSearch(raw: SearchParams): Promise<SearchResults> {
     description: row.description,
     lat: row.lat,
     lng: row.lng,
-    priceCents: row.price_cents,
-    pricePeriod: row.price_period,
+    priceNightCents: row.price_night_cents,
+    priceWeekCents: row.price_week_cents,
+    priceMonthCents: row.price_month_cents,
     pricePerNightCents: row.price_per_night_cents,
+    currency: row.currency,
     roomType: row.room_type,
     flatmateCount: row.flatmate_count,
     maxGuests: row.max_guests,
     flintaOnly: row.flinta_only,
+    anmeldung: row.anmeldung,
+    petsAllowed: row.pets_allowed,
     depositCents: row.deposit_cents,
     minNights: row.min_nights,
     maxNights: row.max_nights,
@@ -180,12 +193,4 @@ async function fetchCoverPhotos(ids: number[]): Promise<Map<number, string>> {
   return new Map(rows.map((r) => [r.listing_id, r.r2_key]));
 }
 
-/** Parse the `bbox` query parameter, "south,west,north,east". */
-export function parseBbox(value: string | null): SearchParams["bbox"] {
-  if (!value) return null;
-  const parts = value.split(",").map(Number);
-  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return null;
-  const [south, west, north, east] = parts;
-  if (south >= north || west >= east) return null;
-  return { south, west, north, east };
-}
+export { parseBbox } from "./bbox";

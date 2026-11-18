@@ -11,6 +11,7 @@ import { eq } from "drizzle-orm";
 import { getAuth } from "./auth";
 import { getDb } from "@/db";
 import { users, type User } from "@/db/schema";
+import { hasContact } from "./contact";
 
 /** The signed-in user, or null. */
 export async function currentUser(): Promise<User | null> {
@@ -30,14 +31,34 @@ export async function requireUser(): Promise<User> {
 }
 
 /**
- * A user who may post or reveal contacts: signed in, not banned, and has given
- * a Telegram or WhatsApp handle. The handle is mandatory because the whole
- * platform hands off to chat — a listing nobody can respond to is worthless.
+ * A user who may post or reveal contacts: an approved member, not banned, with
+ * a Telegram username. The handle is mandatory because the whole platform
+ * hands off to chat — a listing nobody can respond to is worthless.
  */
 export async function requireContactableUser(): Promise<User> {
   const user = await requireUser();
-  if (!user.contactMethod || !user.contactHandle) throw new ContactRequiredError();
+  if (!isMember(user)) throw new MembershipRequiredError();
+  if (!hasContact(user)) throw new ContactRequiredError();
   return user;
+}
+
+/**
+ * A member who may publish an offer or a search: everything above, plus an
+ * ID an admin has checked. Browsing and contacting don't need the ID check.
+ */
+export async function requirePublisher(): Promise<User> {
+  const user = await requireContactableUser();
+  if (!isIdVerified(user)) throw new IdCheckRequiredError();
+  return user;
+}
+
+export function isIdVerified(user: Pick<User, "idCheckStatus">): boolean {
+  return user.idCheckStatus === "verified";
+}
+
+/** Approved by an admin (or here before invites existed). */
+export function isMember(user: Pick<User, "memberStatus">): boolean {
+  return user.memberStatus === "member";
 }
 
 export async function requireAdmin(): Promise<User> {
@@ -53,7 +74,13 @@ export class BannedError extends Error {
   constructor() { super("This account has been suspended."); }
 }
 export class ContactRequiredError extends Error {
-  constructor() { super("Add a Telegram or WhatsApp handle first, so people can reach you."); }
+  constructor() { super("Set a Telegram username first, so people can reach you."); }
+}
+export class MembershipRequiredError extends Error {
+  constructor() { super("An admin needs to approve your membership first."); }
+}
+export class IdCheckRequiredError extends Error {
+  constructor() { super("We need to check your ID before you can publish."); }
 }
 export class ForbiddenError extends Error {
   constructor() { super("You don't have access to that."); }
@@ -64,6 +91,8 @@ export function authErrorResponse(error: unknown): Response | null {
   if (error instanceof UnauthorizedError) return json(401, error.message);
   if (error instanceof BannedError) return json(403, error.message);
   if (error instanceof ContactRequiredError) return json(403, error.message, { needsContact: true });
+  if (error instanceof MembershipRequiredError) return json(403, error.message, { needsMembership: true });
+  if (error instanceof IdCheckRequiredError) return json(403, error.message, { needsIdCheck: true });
   if (error instanceof ForbiddenError) return json(403, error.message);
   return null;
 }

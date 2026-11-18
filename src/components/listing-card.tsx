@@ -3,10 +3,10 @@ import type { ResultListing } from "@/lib/search";
 import type { NearMiss } from "@/lib/matching";
 import { explainShortfall } from "@/lib/matching";
 import { formatRange } from "@/lib/dates";
-import { estimateStayCostCents, formatEuros } from "@/lib/pricing";
+import { quoteForStay, formatMoney } from "@/lib/pricing";
 import { photoUrl } from "@/lib/photos";
 import {
-  RoomTypeBadge, FlintaBadge, DepositBadge, GuestsBadge,
+  RoomTypeBadge, FlintaBadge, AnmeldungBadge, PetsBadge, DepositBadge, GuestsBadge,
   FlexibleNightsBadge, PriceTag,
 } from "./badges";
 
@@ -24,7 +24,7 @@ interface Props {
  */
 export function ListingCard({ listing, checkIn, checkOut }: Props) {
   const nights = checkOut - checkIn;
-  const total = estimateStayCostCents(listing.pricePerNightCents, nights);
+  const quote = quoteForStay(listing, nights);
 
   return (
     <article className="card overflow-hidden hover:border-line-strong transition-colors">
@@ -36,22 +36,26 @@ export function ListingCard({ listing, checkIn, checkOut }: Props) {
           <div className="flex items-start justify-between gap-3">
             <h3 className="font-medium leading-snug sm:truncate">{listing.title}</h3>
             <span className="shrink-0 whitespace-nowrap">
-              <PriceTag priceCents={listing.priceCents} pricePeriod={listing.pricePeriod} />
+              <PriceTag prices={listing} currency={listing.currency} nights={nights} />
             </span>
           </div>
 
           <p className="mt-1 text-sm text-accent-ink">
             Available {formatRange(checkIn, checkOut)} · {nights} {nights === 1 ? "night" : "nights"}
           </p>
-          <p className="text-xs text-ink-faint">
-            about {formatEuros(total)} for your stay
-          </p>
+          {quote && (
+            <p className="text-xs text-ink-faint">
+              about {formatMoney(quote.totalCents, listing.currency)} for your stay
+            </p>
+          )}
 
           <div className="mt-2 flex flex-wrap gap-1.5">
             <RoomTypeBadge roomType={listing.roomType} flatmateCount={listing.flatmateCount} />
             <GuestsBadge maxGuests={listing.maxGuests} />
-            <DepositBadge depositCents={listing.depositCents} />
+            <DepositBadge depositCents={listing.depositCents} currency={listing.currency} />
             {listing.flintaOnly && <FlintaBadge />}
+            {listing.anmeldung && <AnmeldungBadge />}
+            {listing.petsAllowed && <PetsBadge />}
             <FlexibleNightsBadge nights={listing.flexibleNights} />
           </div>
 
@@ -69,6 +73,8 @@ export function ListingCard({ listing, checkIn, checkOut }: Props) {
  */
 export function NearMissCard({ listing, checkIn, checkOut }:
   Props & { listing: ResultListing & { near: NearMiss } }) {
+  const nights = checkOut - checkIn;
+
   return (
     <article className="card overflow-hidden border-dashed hover:border-line-strong transition-colors">
       <Link href={`/listing/${listing.id}`}
@@ -79,7 +85,7 @@ export function NearMissCard({ listing, checkIn, checkOut }:
           <div className="flex items-start justify-between gap-3">
             <h3 className="font-medium leading-snug sm:truncate text-ink-soft">{listing.title}</h3>
             <span className="shrink-0 whitespace-nowrap">
-              <PriceTag priceCents={listing.priceCents} pricePeriod={listing.pricePeriod} />
+              <PriceTag prices={listing} currency={listing.currency} nights={nights} />
             </span>
           </div>
 
@@ -88,7 +94,7 @@ export function NearMissCard({ listing, checkIn, checkOut }:
             {listing.near.shortfalls.map((s, i) => (
               <li key={i} className="text-sm text-flexible flex items-start gap-1.5">
                 <span aria-hidden className="mt-1.5 size-1 rounded-full bg-flexible shrink-0" />
-                {explainShortfall(s)}
+                {explainShortfall(s, listing.currency)}
               </li>
             ))}
           </ul>
@@ -97,6 +103,8 @@ export function NearMissCard({ listing, checkIn, checkOut }:
             <RoomTypeBadge roomType={listing.roomType} flatmateCount={listing.flatmateCount} />
             <GuestsBadge maxGuests={listing.maxGuests} />
             {listing.flintaOnly && <FlintaBadge />}
+            {listing.anmeldung && <AnmeldungBadge />}
+            {listing.petsAllowed && <PetsBadge />}
           </div>
 
           <HostAvailability listing={listing} />

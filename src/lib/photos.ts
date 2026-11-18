@@ -42,19 +42,12 @@ export function photoKey(listingId: number, contentType: PhotoType): string {
 export async function createUploadUrl(
   key: string,
   contentType: PhotoType,
+  bucket: string = requireEnv("R2_BUCKET"),
 ): Promise<{ uploadUrl: string; key: string }> {
-  const client = new AwsClient({
-    accessKeyId: requireEnv("R2_ACCESS_KEY_ID"),
-    secretAccessKey: requireEnv("R2_SECRET_ACCESS_KEY"),
-    service: "s3",
-    region: "auto",
-  });
-
-  const endpoint = `https://${requireEnv("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com/${requireEnv("R2_BUCKET")}/${key}`;
-  const url = new URL(endpoint);
+  const url = new URL(objectUrl(bucket, key));
   url.searchParams.set("X-Amz-Expires", String(UPLOAD_URL_TTL_SECONDS));
 
-  const signed = await client.sign(new Request(url, { method: "PUT" }), {
+  const signed = await r2Client().sign(new Request(url, { method: "PUT" }), {
     aws: { signQuery: true },
     headers: { "Content-Type": contentType },
   });
@@ -89,16 +82,58 @@ export function photoUrl(key: string, width?: 400 | 800 | 1600): string {
  * There is no Workers binding here — the app runs on Vercel — so deletes go
  * through the same signed-request path as uploads.
  */
-export async function deletePhoto(key: string): Promise<void> {
-  const client = new AwsClient({
+export async function deletePhoto(key: string, bucket: string = requireEnv("R2_BUCKET")): Promise<void> {
+  const response = await r2Client().fetch(objectUrl(bucket, key), { method: "DELETE" });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Could not delete photo ${key}: ${response.status}`);
+  }
+}
+
+function r2Client(): AwsClient {
+  return new AwsClient({
     accessKeyId: requireEnv("R2_ACCESS_KEY_ID"),
     secretAccessKey: requireEnv("R2_SECRET_ACCESS_KEY"),
     service: "s3",
     region: "auto",
   });
-  const endpoint = `https://${requireEnv("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com/${requireEnv("R2_BUCKET")}/${key}`;
-  const response = await client.fetch(endpoint, { method: "DELETE" });
-  if (!response.ok && response.status !== 404) {
-    throw new Error(`Could not delete photo ${key}: ${response.status}`);
-  }
+}
+
+function objectUrl(bucket: string, key: string): string {
+  return `https://${requireEnv("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com/${bucket}/${key}`;
+}
+
+/* ------------------------------------------------------------- ID checks */
+
+/**
+ * ID photos and selfies go to their own bucket, which must have NO public
+ * access (no r2.dev URL, no custom domain) and should be created with EU
+ * jurisdiction. Admins see them only through links that expire in minutes,
+ * and they're deleted as soon as the check is done.
+ *
+ * Locally, without R2_ID_BUCKET, they fall back to the photos bucket so the
+ * flow can be tried; in production a missing R2_ID_BUCKET is an error, never
+ * a silent fallback to the public bucket.
+ */
+export function idBucket(): string {
+  const bucket = process.env.R2_ID_BUCKET;
+  if (bucket) return bucket;
+  if (process.env.NODE_ENV !== "production") return requireEnv("R2_BUCKET");
+  return requireEnv("R2_ID_BUCKET");
+}
+
+export function idCheckKey(contentType: PhotoType): string {
+  return `id-checks/${crypto.randomUUID()}.${EXTENSION[contentType]}`;
+}
+
+/** How long an admin's link to an ID photo works. */
+const VIEW_URL_TTL_SECONDS = 300;
+
+/** A short-lived link to look at one private object. */
+export async function createViewUrl(key: string, bucket: string): Promise<string> {
+  const url = new URL(objectUrl(bucket, key));
+  url.searchParams.set("X-Amz-Expires", String(VIEW_URL_TTL_SECONDS));
+  const signed = await r2Client().sign(new Request(url, { method: "GET" }), {
+    aws: { signQuery: true },
+  });
+  return signed.url;
 }

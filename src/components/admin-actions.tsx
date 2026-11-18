@@ -23,18 +23,15 @@ export function AdminActions({
   }
 
   return (
-    <div className="flex flex-col items-end gap-1.5 shrink-0 text-xs">
-      <button onClick={() => act("dismiss")} disabled={busy}
-              className="btn btn-secondary py-1 text-xs">
+    <div className="btn-row">
+      <button onClick={() => act("dismiss")} disabled={busy} className="btn btn-secondary">
         Dismiss
       </button>
-      <button onClick={() => act(hidden ? "unhide" : "hide")} disabled={busy}
-              className="text-ink-faint hover:text-ink-soft underline underline-offset-2">
-        {hidden ? "Unhide listing" : "Hide listing"}
+      <button onClick={() => act(hidden ? "unhide" : "hide")} disabled={busy} className="btn btn-secondary">
+        {hidden ? "Unhide" : "Hide"}
       </button>
       <button onClick={() => { if (confirm("Ban this host and hide all their listings?")) act("ban"); }}
-              disabled={busy}
-              className="text-ink-faint hover:text-flinta underline underline-offset-2">
+              disabled={busy} className="btn btn-danger">
         Ban host
       </button>
     </div>

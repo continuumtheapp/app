@@ -1,4 +1,4 @@
-export const metadata = { title: "Privacy · Continuum" };
+export const metadata = { title: "Privacy · SimbaCasa" };
 
 export default function PrivacyPage() {
   return (
@@ -11,8 +11,10 @@ export default function PrivacyPage() {
 
       <Section title="What we store">
         <p>
-          Your email address, your name if you give one, and the Telegram or
-          WhatsApp handle you add so people can reach you. For listings: the
+          Your Telegram account ID, your Telegram name, username and profile
+          photo (Telegram shares these when you sign in), the name, photo and
+          description you set on your profile, and who invited you and what you
+          wrote when asking to join. We never ask for an email address. For listings: the
           text you write, your photos, the address you enter and the
           coordinates we look up from it.
         </p>
@@ -42,9 +44,10 @@ export default function PrivacyPage() {
           with the link.
         </p>
         <p>
-          The site runs on Cloudflare. Sign-in emails go through Resend.
-          Addresses are looked up once via OpenStreetMap's Nominatim service
-          when you save a listing. Maps use OpenFreeMap. None of them get more
+          The site runs on Vercel and photos are stored on Cloudflare. Sign-in
+          goes through Telegram. While you type a listing's address, what
+          you type, or the city you search in, is sent to Photon (by Komoot,
+          using OpenStreetMap data) to suggest matching addresses and cities. Maps use OpenFreeMap. None of them get more
           than they need to do that job.
         </p>
       </Section>
@@ -53,7 +56,7 @@ export default function PrivacyPage() {
         <p>
           There's a "delete my account" button on your profile. It removes your
           account, your listings, your photos and your contact details
-          immediately and permanently. No email required, no waiting.
+          immediately and permanently. No waiting.
         </p>
       </Section>
     </div>

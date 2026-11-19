@@ -49,6 +49,8 @@ Running cost at community scale: effectively €0/month plus a domain.
 
 ## Getting started
 
+Not a developer? [docs/local-setup.md](docs/local-setup.md) walks through running the site on your own computer and phone, step by step.
+
 ```bash
 npm install
 cp .env.example .env.local   # then fill it in — the file explains each key

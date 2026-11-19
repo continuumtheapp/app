@@ -6,7 +6,7 @@ the first time, and a minute every time after that.
 
 You'll need a Mac (these steps are for macOS) and two things from Ezequiel:
 
-- **Access to the code on GitHub**: an invitation to the `continuumtheapp/app`
+- **Access to the code on GitHub**: an invitation to the `simbacasa/app`
   repository. Accept it from the email GitHub sends you.
 - **A file called `.env.local`**: the site's settings and keys (database, photo
   storage). He'll send it to you privately. It's like a set of passwords:
@@ -43,7 +43,7 @@ This puts the code in a folder called `simbacasa` inside your Documents:
 
 ```bash
 cd ~/Documents
-git clone https://github.com/continuumtheapp/app.git simbacasa
+git clone https://github.com/simbacasa/app.git simbacasa
 cd simbacasa
 git switch feature/ux
 ```

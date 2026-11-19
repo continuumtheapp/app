@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 /*
- * A calm, paper-like palette. This is a community noticeboard, not a booking
- * funnel: no urgency reds, no "3 people are viewing" theatre.
+ * A calm, paper-like palette around the logo's two colours: petrol and gold.
+ * This is a community noticeboard, not a booking funnel: no urgency reds, no
+ * "3 people are viewing" theatre.
  */
 @theme {
   --color-ink: #1a1a1a;
@@ -14,12 +15,18 @@
   --color-line: #e6e2dc;
   --color-line-strong: #d4cfc7;
 
-  --color-accent: #2f5d50;
-  --color-accent-soft: #eaf1ee;
-  --color-accent-ink: #1e3d34;
+  /* Petrol, from the logo: buttons, links, the header. */
+  --color-accent: #014e4b;
+  --color-accent-soft: #e5efee;
+  --color-accent-ink: #013836;
 
-  --color-flexible: #b8860b;
-  --color-flexible-soft: #fdf6e3;
+  /* Gold, from the logo: the one highlight. Too light for text on white. */
+  --color-gold: #fda62f;
+  --color-gold-hover: #f39414;
+
+  /* "Maybe" dates and near misses: the logo's gold, darkened enough to read. */
+  --color-flexible: #9c5f00;
+  --color-flexible-soft: #fff3e0;
 
   --color-flinta: #7b4b8a;
   --color-flinta-soft: #f5eef7;
@@ -72,6 +79,11 @@
 
   .btn-primary { background: var(--color-accent); color: #fff; }
   .btn-primary:hover:not(:disabled) { background: var(--color-accent-ink); }
+
+  /* On petrol, where a petrol button would disappear: the header. */
+  /* White on gold is low contrast (about 2:1), so the text is bolder. */
+  .btn-gold { background: var(--color-gold); color: #fff; font-weight: 600; }
+  .btn-gold:hover:not(:disabled) { background: var(--color-gold-hover); }
 
   .btn-secondary {
     background: var(--color-surface);

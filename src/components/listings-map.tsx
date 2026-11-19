@@ -44,9 +44,9 @@ const MARKER_COLOURS = {
   /** An exact match. */
   exact:    { background: "#ffffff", color: "#1a1a1a", borderColor: "#d4cfc7" },
   /** A near miss — same amber as the "not quite" cards in the list. */
-  nearMiss: { background: "#fdf6e3", color: "#b8860b", borderColor: "#e8d9a8" },
+  nearMiss: { background: "#fff3e0", color: "#9c5f00", borderColor: "#f6d9a8" },
   /** The pin whose card is open. */
-  selected: { background: "#1a1a1a", color: "#ffffff", borderColor: "#1a1a1a" },
+  selected: { background: "#014e4b", color: "#ffffff", borderColor: "#014e4b" },
 } as const;
 
 function paintMarker(el: HTMLElement, state: "exact" | "nearMiss" | "selected") {

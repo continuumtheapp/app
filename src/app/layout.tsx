@@ -1,10 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 
 export const metadata: Metadata = {
   title: "SimbaCasa",
   description: "Short-term housing, shared within our community.",
+  appleWebApp: { title: "SimbaCasa" },
+};
+
+/** The browser's top bar on phones, in the header's petrol. */
+export const viewport: Viewport = {
+  themeColor: "#014e4b",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

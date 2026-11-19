@@ -44,7 +44,7 @@ export function JoinForm({
   }
 
   return (
-    <form onSubmit={submit} className="card p-5 space-y-5">
+    <form onSubmit={submit} suppressHydrationWarning className="card p-5 space-y-5">
       <div>
         <span className="label">Profile photo</span>
         <AvatarPicker name={name || defaultName} initialImage={defaultImage}
@@ -52,12 +52,12 @@ export function JoinForm({
       </div>
       <div>
         <label className="label" htmlFor="join-name">Your name</label>
-        <input id="join-name" className="field" value={name} maxLength={80} required
+        <input suppressHydrationWarning id="join-name" className="field" value={name} maxLength={80} required
                onChange={(e) => setName(e.target.value)} />
       </div>
       <div>
         <label className="label" htmlFor="join-bio">About you</label>
-        <textarea id="join-bio" className="field min-h-28" value={bio} maxLength={600} required
+        <textarea suppressHydrationWarning id="join-bio" className="field min-h-28" value={bio} maxLength={600} required
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="What you do, where you're based, what you're like to live with…" />
         <p className="mt-1.5 text-xs text-ink-faint text-right tabular-nums">{bio.length}/600</p>

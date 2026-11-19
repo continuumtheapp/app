@@ -53,6 +53,10 @@
 }
 
 @layer components {
+  /* Sideways scrolling without a visible scrollbar (the photo carousel). */
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
   .card {
     background: var(--color-surface);
     border: 1px solid var(--color-line);
@@ -109,14 +113,31 @@
 
   .field {
     width: 100%;
+    /* Grid and flex children default to their content's width; date fields
+       on iPhone have a wide built-in minimum and spilled out of the form. */
+    min-width: 0;
+    min-height: 2.75rem;
     background: var(--color-surface);
     border: 1px solid var(--color-line-strong);
     border-radius: 9px;
     padding: 0.5625rem 0.75rem;
-    font-size: 0.9375rem;
+    /* 16px: below that, iPhones zoom in when a field is tapped and stay
+       zoomed, which cut off the edges of the page. */
+    font-size: 1rem;
     color: var(--color-ink);
   }
   .field::placeholder { color: var(--color-ink-faint); }
+
+  /* iPhone draws date fields its own way: centred, with a fixed width. */
+  input[type="date"].field {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+  }
+  input[type="date"].field::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.5rem;
+  }
 
   .label {
     display: block;

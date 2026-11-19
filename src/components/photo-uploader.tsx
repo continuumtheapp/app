@@ -106,7 +106,7 @@ export function PhotoUploader({
       )}
 
       <label className="btn btn-secondary cursor-pointer">
-        <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden
+        <input suppressHydrationWarning type="file" accept="image/jpeg,image/png,image/webp" multiple hidden
                disabled={busy || keys.length >= MAX_PHOTOS_PER_LISTING}
                onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
         {busy ? "Uploading…" : keys.length === 0 ? "Add photos" : "Add more"}

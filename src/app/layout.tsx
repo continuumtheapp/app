@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "SimbaCasa",
   description: "Short-term housing, shared within our community.",
   appleWebApp: { title: "SimbaCasa" },
+  // Stop iPhones turning dates, addresses and numbers into links: they'd be
+  // wrong here ("8 Nov – 12 Nov" isn't an event to add to a calendar).
+  formatDetection: { telephone: false, date: false, address: false, email: false },
 };
 
 /** The browser's top bar on phones, in the header's petrol. */
@@ -15,9 +18,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      {/* Extensions such as ColorZilla add attributes to <body> before React
-          loads. This only ignores attribute differences on <body> itself. */}
+    // Chrome on iPhone adds its own attributes to <html> (and to every form
+    // and field, for autofill: hence suppressHydrationWarning on each of them)
+    // before React loads; extensions such as ColorZilla do the same
+    // to <body>. suppressHydrationWarning only ignores attribute differences
+    // on that one element, never on anything inside it.
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col" suppressHydrationWarning>
         <SiteHeader />
         <main className="flex-1">{children}</main>

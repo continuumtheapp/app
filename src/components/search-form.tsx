@@ -57,7 +57,7 @@ export function SearchForm({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <form onSubmit={submit} className="card p-4 sm:p-5">
+    <form onSubmit={submit} suppressHydrationWarning className="card p-4 sm:p-5">
       <div className="mb-3">
         <label className="label" htmlFor="place">Where</label>
         <PlaceInput id="place" place={place} onChange={setPlace} placeholder="Any city — leave empty for everywhere" />
@@ -65,17 +65,17 @@ export function SearchForm({ compact = false }: { compact?: boolean }) {
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <div>
           <label className="label" htmlFor="checkIn">Check in</label>
-          <input id="checkIn" type="date" className="field" required min={today}
+          <input suppressHydrationWarning id="checkIn" type="date" className="field" required min={today}
                  value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
         </div>
         <div>
           <label className="label" htmlFor="checkOut">Check out</label>
-          <input id="checkOut" type="date" className="field" required min={checkIn || today}
+          <input suppressHydrationWarning id="checkOut" type="date" className="field" required min={checkIn || today}
                  value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
         </div>
         <div className="sm:w-24">
           <label className="label" htmlFor="guests">People</label>
-          <input id="guests" type="number" min={1} max={20} className="field"
+          <input suppressHydrationWarning id="guests" type="number" min={1} max={20} className="field"
                  value={guests} onChange={(e) => setGuests(e.target.value)} />
         </div>
       </div>
@@ -96,13 +96,13 @@ export function SearchForm({ compact = false }: { compact?: boolean }) {
             <label className="label" htmlFor="maxPrice">
               Max price per night{place ? ` (${currencySymbol(currencyFor(place.country))})` : ""}
             </label>
-            <input id="maxPrice" type="number" min={0} className="field" disabled={!place}
+            <input suppressHydrationWarning id="maxPrice" type="number" min={0} className="field" disabled={!place}
                    placeholder={place ? "Any" : "Pick a city first"}
                    value={place ? maxPrice : ""} onChange={(e) => setMaxPrice(e.target.value)} />
           </div>
           <div>
             <label className="label" htmlFor="roomType">Type of place</label>
-            <select id="roomType" className="field" value={roomType}
+            <select suppressHydrationWarning id="roomType" className="field" value={roomType}
                     onChange={(e) => setRoomType(e.target.value)}>
               <option value="">Any</option>
               <option value="whole_flat">Whole flat</option>
@@ -111,19 +111,19 @@ export function SearchForm({ compact = false }: { compact?: boolean }) {
           </div>
           <div className="sm:col-span-2 flex flex-wrap gap-x-5 gap-y-2 text-sm">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={flintaOnly}
+              <input suppressHydrationWarning type="checkbox" checked={flintaOnly}
                      onChange={(e) => setFlintaOnly(e.target.checked)} />
               <span className="text-ink-soft">Only FLINTA housing</span>
             </label>
             {hasAnmeldung(place?.country) && (
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={anmeldung}
+                <input suppressHydrationWarning type="checkbox" checked={anmeldung}
                        onChange={(e) => setAnmeldung(e.target.checked)} />
                 <span className="text-ink-soft">Anmeldung possible</span>
               </label>
             )}
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={pets}
+              <input suppressHydrationWarning type="checkbox" checked={pets}
                      onChange={(e) => setPets(e.target.checked)} />
               <span className="text-ink-soft">Pets allowed</span>
             </label>

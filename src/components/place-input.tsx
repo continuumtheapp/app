@@ -81,7 +81,7 @@ export function PlaceInput({
 
   return (
     <div ref={boxRef} className="relative">
-      <input
+      <input suppressHydrationWarning
         id={id}
         required={required}
         maxLength={80}

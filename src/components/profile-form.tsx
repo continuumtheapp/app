@@ -55,7 +55,7 @@ export function ProfileForm({
 
   return (
     <>
-      <form onSubmit={submit} className="card p-5 space-y-5">
+      <form onSubmit={submit} suppressHydrationWarning className="card p-5 space-y-5">
         <div>
           <span className="label">Profile photo</span>
           <AvatarPicker name={name || initialName} initialImage={initialImage}
@@ -65,7 +65,7 @@ export function ProfileForm({
 
         <div>
           <label className="label" htmlFor="name">Your name</label>
-          <input id="name" className="field" value={name} maxLength={80}
+          <input suppressHydrationWarning id="name" className="field" value={name} maxLength={80}
                  onChange={(e) => { setName(e.target.value); setSaved(false); }}
                  placeholder="How other members will see you" />
           <p className="mt-1.5 text-xs text-ink-faint">
@@ -75,7 +75,7 @@ export function ProfileForm({
 
         <div>
           <label className="label" htmlFor="bio">About you</label>
-          <textarea id="bio" className="field min-h-28" value={bio} maxLength={600}
+          <textarea suppressHydrationWarning id="bio" className="field min-h-28" value={bio} maxLength={600}
                     onChange={(e) => { setBio(e.target.value); setSaved(false); }}
                     placeholder="What you do, where you're based, what you're like to live with…" />
           <p className="mt-1.5 text-xs text-ink-faint text-right tabular-nums">{bio.length}/600</p>

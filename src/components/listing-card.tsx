@@ -32,7 +32,7 @@ export function ListingCard({ listing, checkIn, checkOut }: Props) {
             className="block sm:flex sm:gap-4 sm:p-3 active:bg-paper/60">
         <Cover listing={listing} />
 
-        <div className="min-w-0 flex-1 p-3 sm:p-0">
+        <div className="min-w-0 flex-1 p-4 sm:p-0">
           <div className="flex items-start justify-between gap-3">
             <h3 className="font-medium leading-snug sm:truncate">{listing.title}</h3>
             <span className="shrink-0 whitespace-nowrap">
@@ -81,7 +81,7 @@ export function NearMissCard({ listing, checkIn, checkOut }:
             className="block sm:flex sm:gap-4 sm:p-3 active:bg-paper/60">
         <Cover listing={listing} muted />
 
-        <div className="min-w-0 flex-1 p-3 sm:p-0">
+        <div className="min-w-0 flex-1 p-4 sm:p-0">
           <div className="flex items-start justify-between gap-3">
             <h3 className="font-medium leading-snug sm:truncate text-ink-soft">{listing.title}</h3>
             <span className="shrink-0 whitespace-nowrap">

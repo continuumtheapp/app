@@ -38,9 +38,9 @@ export function ReportButton({ listingId }: { listingId: number }) {
   }
 
   return (
-    <form onSubmit={submit} className="card p-4 text-left max-w-md ml-auto">
+    <form onSubmit={submit} suppressHydrationWarning className="card p-4 text-left max-w-md ml-auto">
       <label className="label" htmlFor="reason">What's wrong with this listing?</label>
-      <textarea id="reason" required minLength={10} maxLength={1000} rows={3}
+      <textarea suppressHydrationWarning id="reason" required minLength={10} maxLength={1000} rows={3}
                 className="field resize-y" value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="A scam, a duplicate, something offensive…" />

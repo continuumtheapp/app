@@ -135,19 +135,19 @@ export function ListingForm({ existing, aiEnabled = false }: { existing?: FullLi
   }
 
   return (
-    <form onSubmit={submit} className="space-y-8">
+    <form onSubmit={submit} suppressHydrationWarning className="space-y-8">
       {aiEnabled && !existing && <CreateWithAi onDraft={applyDraft} />}
       <Section title="The place">
         <div>
           <label className="label" htmlFor="title">Title</label>
-          <input id="title" required maxLength={120} className="field" value={title}
+          <input suppressHydrationWarning id="title" required maxLength={120} className="field" value={title}
                  onChange={(e) => setTitle(e.target.value)}
                  placeholder="Sunny room in Neukölln, quiet courtyard" />
         </div>
 
         <div>
           <label className="label" htmlFor="description">Description</label>
-          <textarea id="description" rows={6} maxLength={4000} className="field resize-y"
+          <textarea suppressHydrationWarning id="description" rows={6} maxLength={4000} className="field resize-y"
                     value={description} onChange={(e) => setDescription(e.target.value)}
                     placeholder="What's it like? Who lives there? Anything worth knowing." />
           <p className="mt-1 text-xs text-ink-faint">
@@ -171,7 +171,7 @@ export function ListingForm({ existing, aiEnabled = false }: { existing?: FullLi
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="roomType">Whole flat or shared</label>
-            <select id="roomType" className="field" value={roomType}
+            <select suppressHydrationWarning id="roomType" className="field" value={roomType}
                     onChange={(e) => setRoomType(e.target.value as "whole_flat" | "shared")}>
               <option value="whole_flat">The whole flat</option>
               <option value="shared">A room in a shared flat</option>
@@ -181,20 +181,20 @@ export function ListingForm({ existing, aiEnabled = false }: { existing?: FullLi
           {roomType === "shared" && (
             <div>
               <label className="label" htmlFor="flatmates">People already living there</label>
-              <input id="flatmates" type="number" min={0} max={20} className="field"
+              <input suppressHydrationWarning id="flatmates" type="number" min={0} max={20} className="field"
                      value={flatmateCount} onChange={(e) => setFlatmateCount(e.target.value)} />
             </div>
           )}
 
           <div>
             <label className="label" htmlFor="maxGuests">Sleeps how many</label>
-            <input id="maxGuests" type="number" min={1} max={20} required className="field"
+            <input suppressHydrationWarning id="maxGuests" type="number" min={1} max={20} required className="field"
                    value={maxGuests} onChange={(e) => setMaxGuests(e.target.value)} />
           </div>
         </div>
 
         <label className="flex items-start gap-2.5 cursor-pointer">
-          <input type="checkbox" className="mt-0.5" checked={flintaOnly}
+          <input suppressHydrationWarning type="checkbox" className="mt-0.5" checked={flintaOnly}
                  onChange={(e) => setFlintaOnly(e.target.checked)} />
           <span className="text-sm">
             <span className="font-medium">FLINTA only</span>
@@ -206,7 +206,7 @@ export function ListingForm({ existing, aiEnabled = false }: { existing?: FullLi
 
         {hasAnmeldung(country) && (
           <label className="flex items-start gap-2.5 cursor-pointer">
-            <input type="checkbox" className="mt-0.5" checked={anmeldung}
+            <input suppressHydrationWarning type="checkbox" className="mt-0.5" checked={anmeldung}
                    onChange={(e) => setAnmeldung(e.target.checked)} />
             <span className="text-sm">
               <span className="font-medium">Anmeldung possible</span>
@@ -218,7 +218,7 @@ export function ListingForm({ existing, aiEnabled = false }: { existing?: FullLi
         )}
 
         <label className="flex items-start gap-2.5 cursor-pointer">
-          <input type="checkbox" className="mt-0.5" checked={petsAllowed}
+          <input suppressHydrationWarning type="checkbox" className="mt-0.5" checked={petsAllowed}
                  onChange={(e) => setPetsAllowed(e.target.checked)} />
           <span className="text-sm font-medium">Pets allowed</span>
         </label>
@@ -234,7 +234,7 @@ export function ListingForm({ existing, aiEnabled = false }: { existing?: FullLi
 
         <div className="pt-2">
           <label className="label" htmlFor="deposit">Deposit ({symbol}, 0 for none)</label>
-          <input id="deposit" type="number" min={0} step="1" className="field sm:max-w-48"
+          <input suppressHydrationWarning id="deposit" type="number" min={0} step="1" className="field sm:max-w-48"
                  value={deposit} onChange={(e) => setDeposit(e.target.value)} />
         </div>
       </Section>
@@ -246,13 +246,13 @@ export function ListingForm({ existing, aiEnabled = false }: { existing?: FullLi
         <div className="grid gap-4 sm:grid-cols-2 pt-4 border-t border-line">
           <div>
             <label className="label" htmlFor="minNights">Shortest stay you'd accept</label>
-            <input id="minNights" type="number" min={1} max={365} className="field"
+            <input suppressHydrationWarning id="minNights" type="number" min={1} max={365} className="field"
                    placeholder="No minimum" value={minNights}
                    onChange={(e) => setMinNights(e.target.value)} />
           </div>
           <div>
             <label className="label" htmlFor="maxNights">Longest stay you'd accept</label>
-            <input id="maxNights" type="number" min={1} max={365} className="field"
+            <input suppressHydrationWarning id="maxNights" type="number" min={1} max={365} className="field"
                    placeholder="No maximum" value={maxNights}
                    onChange={(e) => setMaxNights(e.target.value)} />
           </div>
@@ -266,7 +266,7 @@ export function ListingForm({ existing, aiEnabled = false }: { existing?: FullLi
 
       <section className="card p-5">
         <label className="flex items-start gap-2.5 cursor-pointer">
-          <input type="checkbox" className="mt-0.5" required checked={pledged}
+          <input suppressHydrationWarning type="checkbox" className="mt-0.5" required checked={pledged}
                  onChange={(e) => setPledged(e.target.checked)} />
           <span className="text-sm">
             <span className="font-medium">Fair Rent Pledge</span>
@@ -296,7 +296,7 @@ function RateField({ label, symbol, value, onChange }:
     <div className="flex items-center gap-3">
       <span className="w-24 shrink-0 text-sm text-ink-soft">{label}</span>
       <div className="relative flex-1 sm:max-w-40">
-        <input type="number" min={0} step="1" className="field pr-12" value={value}
+        <input suppressHydrationWarning type="number" min={0} step="1" className="field pr-12" value={value}
                placeholder="—" onChange={(e) => onChange(e.target.value)} />
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-ink-faint">{symbol}</span>
       </div>
@@ -368,7 +368,7 @@ function CreateWithAi({ onDraft }: { onDraft: (draft: ListingDraft) => void }) {
   return (
     <section className="card p-5 space-y-3">
       <label className="label" htmlFor="ai-post">Your Telegram post</label>
-      <textarea id="ai-post" rows={8} maxLength={6000} className="field resize-y" value={post}
+      <textarea suppressHydrationWarning id="ai-post" rows={8} maxLength={6000} className="field resize-y" value={post}
                 onChange={(e) => setPost(e.target.value)}
                 placeholder="Paste the whole post, with the dates and the price." />
       <p className="text-xs text-ink-faint">

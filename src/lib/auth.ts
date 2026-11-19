@@ -9,6 +9,7 @@
  * Under `next dev` only, devSignIn() also lets you sign in as a seed member,
  * since Telegram can't redirect back to localhost. See src/lib/dev-sign-in.ts.
  */
+import { lanAddresses } from "./lan";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { genericOAuth } from "better-auth/plugins";
@@ -37,6 +38,11 @@ export function getAuth() {
 
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL: process.env.BETTER_AUTH_URL,
+    // In development, also trust this computer's Wi-Fi address, so signing
+    // in works from a phone on the same network.
+    trustedOrigins: process.env.NODE_ENV === "development"
+      ? lanAddresses().map((ip) => `http://${ip}:4000`)
+      : [],
 
     // Telegram is the only way in: no passwords, no email links.
     emailAndPassword: { enabled: false },

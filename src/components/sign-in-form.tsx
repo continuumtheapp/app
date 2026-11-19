@@ -68,7 +68,7 @@ export function SignInForm({ telegram, testMembers, needsCode = false, next: nex
           {needsCode && (
             <div className="mt-2">
               <label className="label" htmlFor="test-code">Test code</label>
-              <input id="test-code" type="password" className="field" value={code}
+              <input suppressHydrationWarning id="test-code" type="password" className="field" value={code}
                      autoComplete="off" onChange={(e) => setCode(e.target.value)} />
             </div>
           )}

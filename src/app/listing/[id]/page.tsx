@@ -4,6 +4,7 @@ import { getListing } from "@/lib/listings";
 import { currentUser, isMember } from "@/lib/session";
 import { hasContact } from "@/lib/contact";
 import { photoUrl } from "@/lib/photos";
+import { PhotoCarousel } from "@/components/photo-carousel";
 import { approximate, areaOf } from "@/lib/visibility";
 import { formatAllRates, formatMoney, quotedRates } from "@/lib/pricing";
 import { AvailabilityCalendar } from "@/components/availability-calendar";
@@ -41,6 +42,13 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </p>
       )}
 
+      {/* Photos first, one at a time: the details stay a swipe away. */}
+      {photos.length > 0 && (
+        <div className="mb-5">
+          <PhotoCarousel urls={photos.map((key) => photoUrl(key, 1600))} />
+        </div>
+      )}
+
       <div className="sm:flex sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight text-balance">{listing.title}</h1>
@@ -76,21 +84,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         {listing.petsAllowed && <PetsBadge />}
       </div>
 
-      {photos.length > 0 && (
-        <div className="mt-6 grid gap-2 sm:grid-cols-2">
-          {photos.map((key, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={key}
-              src={photoUrl(key, i === 0 ? 1600 : 800)}
-              alt=""
-              loading={i === 0 ? "eager" : "lazy"}
-              className={`w-full rounded-xl border border-line object-cover
-                          ${i === 0 ? "sm:col-span-2 max-h-[420px]" : "max-h-56"}`}
-            />
-          ))}
-        </div>
-      )}
 
       {!full && (
         <div className="mt-6 card bg-paper p-4 text-sm text-ink-soft">

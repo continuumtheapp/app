@@ -97,7 +97,7 @@ function PhotoSlot({ label, hint, preview, uploading, capture, onPick }: {
           <img src={preview} alt="" className="h-20 w-28 rounded-lg border border-line object-cover" />
         )}
         <label className="btn btn-secondary cursor-pointer">
-          <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={uploading}
+          <input suppressHydrationWarning type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={uploading}
                  {...(capture ? { capture: "user" as const } : {})}
                  onChange={(e) => { onPick(e.target.files?.[0]); e.target.value = ""; }} />
           {uploading ? "Uploading…" : preview ? "Change" : "Add a photo"}

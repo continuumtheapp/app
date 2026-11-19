@@ -71,7 +71,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                     ? "Nothing matches those dates exactly"
                     : `${exact.length} ${exact.length === 1 ? "place fits" : "places fit"} your dates`}
                 </h2>
-                <div className="mt-3 space-y-3">
+                <div className="mt-3 space-y-4">
                   {exact.map((l) => (
                     <ListingCard key={l.id} listing={l} checkIn={checkIn} checkOut={checkOut} />
                   ))}
@@ -85,7 +85,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                     These don't fit your dates as posted. Hosts here are often
                     flexible — it's worth asking.
                   </p>
-                  <div className="mt-3 space-y-3">
+                  <div className="mt-3 space-y-4">
                     {nearMisses.map((l) => (
                       <NearMissCard key={l.id} listing={l} checkIn={checkIn} checkOut={checkOut} />
                     ))}

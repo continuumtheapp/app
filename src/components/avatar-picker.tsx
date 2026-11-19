@@ -61,7 +61,7 @@ export function AvatarPicker({
       <AvatarZoom name={name} image={preview} size={72} />
       <div className="flex flex-wrap items-center gap-3">
         <label className="btn btn-secondary cursor-pointer">
-          <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={uploading}
+          <input suppressHydrationWarning type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={uploading}
                  onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ""; }} />
           {uploading ? "Uploading…" : preview ? "Change photo" : "Add a photo"}
         </label>

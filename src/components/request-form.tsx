@@ -86,17 +86,17 @@ export function RequestForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-8">
+    <form onSubmit={submit} suppressHydrationWarning className="space-y-8">
       <Section title="When">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="checkIn">Move in</label>
-            <input id="checkIn" type="date" required min={today} className="field"
+            <input suppressHydrationWarning id="checkIn" type="date" required min={today} className="field"
                    value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
           </div>
           <div>
             <label className="label" htmlFor="checkOut">Move out</label>
-            <input id="checkOut" type="date" required min={checkIn || today} className="field"
+            <input suppressHydrationWarning id="checkOut" type="date" required min={checkIn || today} className="field"
                    value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
           </div>
         </div>
@@ -142,7 +142,7 @@ export function RequestForm() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="roomType">Type of place</label>
-            <select id="roomType" className="field" value={roomType}
+            <select suppressHydrationWarning id="roomType" className="field" value={roomType}
                     onChange={(e) => setRoomType(e.target.value as RoomType)}>
               <option value="either">A room or a whole flat</option>
               <option value="whole_flat">Only a whole flat</option>
@@ -151,7 +151,7 @@ export function RequestForm() {
           </div>
           <div>
             <label className="label" htmlFor="guests">People</label>
-            <input id="guests" type="number" min={1} max={20} required className="field"
+            <input suppressHydrationWarning id="guests" type="number" min={1} max={20} required className="field"
                    value={guests} onChange={(e) => setGuests(e.target.value)} />
           </div>
         </div>
@@ -170,12 +170,12 @@ export function RequestForm() {
       <Section title="Budget" hint={`Optional. The most you'd pay, in ${currency}${place ? "" : " until you pick a city"}.`}>
         <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:max-w-40">
-            <input type="number" min={0} step="1" className="field pr-12" value={budget}
+            <input suppressHydrationWarning type="number" min={0} step="1" className="field pr-12" value={budget}
                    placeholder="Any" onChange={(e) => setBudget(e.target.value)}
                    aria-label={`Maximum budget in ${currency}`} />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-ink-faint">{symbol}</span>
           </div>
-          <select className="field w-auto" value={budgetPeriod} aria-label="Budget period"
+          <select suppressHydrationWarning className="field w-auto" value={budgetPeriod} aria-label="Budget period"
                   onChange={(e) => setBudgetPeriod(e.target.value as Period)}>
             <option value="night">per night</option>
             <option value="week">per week</option>
@@ -187,7 +187,7 @@ export function RequestForm() {
       <Section title="About your stay"
                hint="Optional. Why you're coming, what you'll be doing, anything a host should know. Your profile already says who you are.">
         <div>
-          <textarea id="note" className="field min-h-28" value={note} maxLength={REQUEST_NOTE_MAX}
+          <textarea suppressHydrationWarning id="note" className="field min-h-28" value={note} maxLength={REQUEST_NOTE_MAX}
                     aria-label="About your stay" onChange={(e) => setNote(e.target.value)}
                     placeholder="Coming for a three-month job at a studio in Kreuzberg, quiet, out most days…" />
           <p className="mt-1.5 text-xs text-ink-faint text-right tabular-nums">{note.length}/{REQUEST_NOTE_MAX}</p>
@@ -212,7 +212,7 @@ function Check({ checked, onChange, label, hint }:
   { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   return (
     <label className="flex items-start gap-2.5 cursor-pointer">
-      <input type="checkbox" className="mt-0.5" checked={checked}
+      <input suppressHydrationWarning type="checkbox" className="mt-0.5" checked={checked}
              onChange={(e) => onChange(e.target.checked)} />
       <span className="text-sm">
         <span className="font-medium">{label}</span>

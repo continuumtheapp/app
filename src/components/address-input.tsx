@@ -98,7 +98,7 @@ export function AddressInput({
 
   return (
     <div ref={boxRef} className="relative">
-      <input
+      <input suppressHydrationWarning
         id="address"
         required
         maxLength={200}

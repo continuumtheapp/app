@@ -381,6 +381,40 @@ export const housingRequests = pgTable("housing_requests", {
   ),
 ]);
 
+/* --------------------------------------------------------- stays, reviews */
+
+/**
+ * Who stayed where: recorded when a host marks a place taken, so host and
+ * guest can review each other. A place can be taken many times.
+ */
+export const stays = pgTable("stays", {
+  id: serial("id").primaryKey(),
+  // Kept if the place is later deleted: the reviews are about people.
+  listingId: integer("listing_id").references(() => listings.id, { onDelete: "set null" }),
+  listingTitle: text("listing_title").notNull(),
+  hostId: text("host_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** A member, or null: someone outside SimbaCasa, or the host didn't say. */
+  guestId: text("guest_id").references(() => users.id, { onDelete: "set null" }),
+  guestOutside: boolean("guest_outside").notNull().default(false),
+  /** The move-out day, as a day number. Reviews open on it; the bot asks the day after. */
+  endsOn: integer("ends_on"),
+  reviewRequestedAt: timestamp("review_requested_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("idx_stays_host").on(t.hostId), index("idx_stays_guest").on(t.guestId)]);
+
+/** Written only: with so few stays per person, a star rating says little. */
+export const reviews = pgTable("reviews", {
+  id: serial("id").primaryKey(),
+  stayId: integer("stay_id").notNull().references(() => stays.id, { onDelete: "cascade" }),
+  authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subjectId: text("subject_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("uq_reviews_stay_author").on(t.stayId, t.authorId),
+  index("idx_reviews_subject").on(t.subjectId, t.createdAt),
+]);
+
 export type Listing = typeof listings.$inferSelect;
 export type NewListing = typeof listings.$inferInsert;
 export type AvailabilityBlock = typeof availabilityBlocks.$inferSelect;

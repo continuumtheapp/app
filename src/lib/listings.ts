@@ -113,7 +113,7 @@ export async function getListingsByHost(hostId: string) {
     const blocks = await db.select().from(availabilityBlocks)
       .where(eq(availabilityBlocks.listingId, l.id));
     const last = lastAvailableDay(blocks.map((b) => ({ startDay: b.startDay, endDay: b.endDay })));
-    return { ...l, expired: last !== null && last <= today };
+    return { ...l, expired: last !== null && last <= today, lastDay: last };
   }));
 }
 

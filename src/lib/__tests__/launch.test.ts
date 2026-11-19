@@ -79,3 +79,13 @@ describe("local currency", () => {
     expect(currencySymbol("CHF")).toBe("CHF");
   });
 });
+
+import { reviewOpen } from "../stays";
+
+describe("when a review can be written", () => {
+  it("opens on the move-out day, or right away without one", () => {
+    expect(reviewOpen({ endsOn: 100 }, 99)).toBe(false);
+    expect(reviewOpen({ endsOn: 100 }, 100)).toBe(true);
+    expect(reviewOpen({ endsOn: null }, 1)).toBe(true);
+  });
+});

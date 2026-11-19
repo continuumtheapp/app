@@ -6,6 +6,8 @@ import { getPublicProfile } from "@/lib/members";
 import { getDb } from "@/db";
 import { listings } from "@/db/schema";
 import { AvatarZoom } from "@/components/avatar-zoom";
+import { Avatar } from "@/components/avatar";
+import { reviewsAbout } from "@/lib/stays";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Member · SimbaCasa" };
@@ -25,6 +27,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
     notFound();
   }
 
+  const reviews = await reviewsAbout(id);
   const places = await getDb()
     .select({ id: listings.id, title: listings.title })
     .from(listings)
@@ -54,6 +57,37 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
       {isSelf && (
         <Link href="/profile" className="btn btn-secondary mt-4">Edit profile</Link>
       )}
+
+      {/* Written reviews from people they've hosted or stayed with. */}
+      <section className="mt-10">
+        <h2 className="font-medium">
+          Reviews{reviews.length > 0 && <span className="text-ink-faint font-normal"> · {reviews.length}</span>}
+        </h2>
+        {reviews.length === 0 ? (
+          <p className="mt-2 text-sm text-ink-faint">No reviews yet.</p>
+        ) : (
+          <div className="mt-3 space-y-3">
+            {reviews.map((r) => (
+              <article key={r.id} className="card p-4">
+                <div className="flex items-center gap-2.5">
+                  <Avatar name={r.author.name} image={r.author.image} size={28} />
+                  <div className="min-w-0 text-sm">
+                    <Link href={`/members/${r.author.id}`} className="font-medium hover:underline">
+                      {r.author.name ?? "A member"}
+                    </Link>
+                    <span className="text-ink-faint">
+                      {" "}· {r.byHost ? "hosted them" : "stayed at their place"} ·{" "}
+                      {r.createdAt.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-2.5 whitespace-pre-wrap leading-relaxed">{r.body}</p>
+                <p className="mt-2 text-xs text-ink-faint">{r.listingTitle}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       {places.length > 0 && (
         <section className="mt-10">

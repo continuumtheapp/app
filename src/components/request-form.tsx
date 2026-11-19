@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toDayNumber } from "@/lib/dates";
+import { toDayNumber, fromDayNumber } from "@/lib/dates";
+import { boxAround } from "@/lib/geo";
+import type { HousingRequest } from "@/lib/requests";
 import { REQUEST_NOTE_MAX } from "@/lib/request-rules";
 import { areasFor } from "@/lib/areas";
 import { currencyFor, currencySymbol } from "@/lib/currency";
@@ -12,24 +15,29 @@ import { PlaceInput } from "./place-input";
 type RoomType = "whole_flat" | "shared" | "either";
 type Period = "night" | "week" | "month";
 
-export function RequestForm() {
+/** Posting a request, or editing one when `existing` is given. */
+export function RequestForm({ existing }: { existing?: HousingRequest }) {
   const router = useRouter();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const e = existing;
 
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [datesFlexible, setDatesFlexible] = useState(false);
-  const [place, setPlace] = useState<PlaceSuggestion | null>(null);
-  const [areas, setAreas] = useState<string[]>([]);
-  const [note, setNote] = useState("");
-  const [roomType, setRoomType] = useState<RoomType>("either");
-  const [guests, setGuests] = useState("1");
-  const [withChildren, setWithChildren] = useState(false);
-  const [withPets, setWithPets] = useState(false);
-  const [budget, setBudget] = useState("");
-  const [budgetPeriod, setBudgetPeriod] = useState<Period>("month");
-  const [needsAnmeldung, setNeedsAnmeldung] = useState(false);
-  const [flintaOnly, setFlintaOnly] = useState(false);
+  const [checkIn, setCheckIn] = useState(e ? fromDayNumber(e.checkIn) : "");
+  const [checkOut, setCheckOut] = useState(e ? fromDayNumber(e.checkOut) : "");
+  const [datesFlexible, setDatesFlexible] = useState(e?.datesFlexible ?? false);
+  const [place, setPlace] = useState<PlaceSuggestion | null>(e ? {
+    name: e.city, label: e.city, country: e.country, lat: e.cityLat, lng: e.cityLng,
+    bbox: boxAround(e.cityLat, e.cityLng),
+  } : null);
+  const [areas, setAreas] = useState<string[]>(e?.areas ?? []);
+  const [note, setNote] = useState(e?.note ?? "");
+  const [roomType, setRoomType] = useState<RoomType>(e?.roomType ?? "either");
+  const [guests, setGuests] = useState(String(e?.guests ?? 1));
+  const [withChildren, setWithChildren] = useState(e?.withChildren ?? false);
+  const [withPets, setWithPets] = useState(e?.withPets ?? false);
+  const [budget, setBudget] = useState(e?.maxBudgetCents != null ? String(e.maxBudgetCents / 100) : "");
+  const [budgetPeriod, setBudgetPeriod] = useState<Period>(e?.budgetPeriod ?? "month");
+  const [needsAnmeldung, setNeedsAnmeldung] = useState(e?.needsAnmeldung ?? false);
+  const [flintaOnly, setFlintaOnly] = useState(e?.flintaOnly ?? false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,8 +59,8 @@ export function RequestForm() {
     setAreas((a) => (a.includes(area) ? a.filter((x) => x !== area) : [...a, area]));
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit(ev: React.FormEvent) {
+    ev.preventDefault();
     setError(null);
     if (!place) {
       setError("Pick the city from the suggestions.");
@@ -64,8 +72,8 @@ export function RequestForm() {
     }
 
     setSaving(true);
-    const response = await fetch("/api/requests", {
-      method: "POST",
+    const response = await fetch(e ? `/api/requests/${e.id}` : "/api/requests", {
+      method: e ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         city: place.name, country: place.country, cityLat: place.lat, cityLng: place.lng,
@@ -196,12 +204,14 @@ export function RequestForm() {
 
       {error && <p className="text-sm text-flinta">{error}</p>}
 
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={() => router.back()} className="btn btn-secondary">
+      {/* Cancel goes somewhere fixed: "back" depended on browser history and
+          sometimes went nowhere, or to a stale page. */}
+      <div className="btn-row">
+        <Link href={e ? "/my-listings" : "/"} className="btn btn-secondary">
           Cancel
-        </button>
+        </Link>
         <button type="submit" disabled={saving || invalidDates} className="btn btn-primary">
-          {saving ? "Saving…" : "Post request"}
+          {saving ? "Saving…" : e ? "Save changes" : "Post request"}
         </button>
       </div>
     </form>

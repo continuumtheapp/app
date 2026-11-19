@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MAX_PHOTOS_PER_LISTING, MAX_PHOTO_BYTES } from "@/lib/photos";
+import { MAX_PHOTOS_PER_LISTING, MAX_PHOTO_BYTES, photoUrl } from "@/lib/photos";
 
 /**
  * Photos go straight from the browser to R2 via a presigned URL, so the image
@@ -85,7 +85,8 @@ export function PhotoUploader({
           {keys.map((key, i) => (
             <div key={key} className="relative group aspect-square rounded-lg overflow-hidden border border-line">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previews[key] ?? ""} alt="" className="size-full object-cover bg-paper" />
+              {/* Just uploaded: the local preview. Already saved: the stored photo. */}
+              <img src={previews[key] ?? photoUrl(key, 400)} alt="" className="size-full object-cover bg-paper" />
               {i === 0 && (
                 <span className="absolute bottom-1 left-1 badge bg-white/90 text-ink text-[10px]">
                   Cover

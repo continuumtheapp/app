@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AvailabilityEditor, type AvailabilityValue } from "./availability-editor";
@@ -277,10 +278,12 @@ export function ListingForm({ existing, aiEnabled = false }: { existing?: FullLi
 
       {error && <p className="text-sm text-flinta">{error}</p>}
 
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={() => router.back()} className="btn btn-secondary">
+      {/* Cancel goes somewhere fixed: "back" depended on browser history and
+          sometimes went nowhere, or to a stale page. */}
+      <div className="btn-row">
+        <Link href={existing ? "/my-listings" : "/"} className="btn btn-secondary">
           Cancel
-        </button>
+        </Link>
         <button type="submit" disabled={saving} className="btn btn-primary">
           {saving ? "Saving…" : existing ? "Save changes" : "Post it"}
         </button>

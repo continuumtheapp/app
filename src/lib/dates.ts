@@ -72,3 +72,10 @@ export function formatRange(start: number, end: number): string {
 
   return `${fmt(start, !sameYear)} – ${fmt(end, true)}`;
 }
+
+/** One day for display, e.g. "20 Mar 2026". */
+export function formatDay(day: number): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "UTC", day: "numeric", month: "short", year: "numeric",
+  }).format(new Date(day * MS_PER_DAY));
+}

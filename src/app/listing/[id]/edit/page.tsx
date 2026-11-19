@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { currentUser } from "@/lib/session";
 import { getListing } from "@/lib/listings";
 import { ListingForm } from "@/components/listing-form";
+import { DeleteButton } from "@/components/delete-button";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,9 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-medium tracking-tight">Edit listing</h1>
+      <div className="mt-5">
+        <DeleteButton endpoint={`/api/listings/${listing.id}`} what="place" />
+      </div>
       <div className="mt-8">
         <ListingForm existing={listing} />
       </div>

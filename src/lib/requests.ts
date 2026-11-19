@@ -67,10 +67,9 @@ export async function getRequestsBySeeker(seekerId: string): Promise<HousingRequ
     .orderBy(desc(housingRequests.updatedAt));
 }
 
-export async function saveRequest(input: RequestInput, seekerId: string): Promise<number> {
-  const now = Date.now();
-  const inserted = await getDb().insert(housingRequests).values({
-    seekerId,
+/** The columns a request's form fills in. */
+function requestValues(input: RequestInput) {
+  return {
     city: input.city,
     country: input.country,
     cityLat: input.cityLat,
@@ -90,11 +89,36 @@ export async function saveRequest(input: RequestInput, seekerId: string): Promis
     budgetPeriod: input.maxBudgetCents === null ? null : input.budgetPeriod,
     needsAnmeldung: input.needsAnmeldung,
     flintaOnly: input.flintaOnly,
+  };
+}
+
+export async function saveRequest(input: RequestInput, seekerId: string): Promise<number> {
+  const now = Date.now();
+  const inserted = await getDb().insert(housingRequests).values({
+    seekerId,
+    ...requestValues(input),
     status: "open",
     createdAt: now,
     updatedAt: now,
   }).returning({ id: housingRequests.id });
   return inserted[0].id;
+}
+
+/** Edit a seeker's own request. Saving new dates reopens it. */
+export async function updateRequest(id: number, input: RequestInput, seekerId: string): Promise<boolean> {
+  const updated = await getDb().update(housingRequests)
+    .set({ ...requestValues(input), status: "open", updatedAt: Date.now() })
+    .where(and(eq(housingRequests.id, id), eq(housingRequests.seekerId, seekerId)))
+    .returning({ id: housingRequests.id });
+  return updated.length > 0;
+}
+
+/** Delete a seeker's own request for good. */
+export async function deleteRequest(id: number, seekerId: string): Promise<boolean> {
+  const deleted = await getDb().delete(housingRequests)
+    .where(and(eq(housingRequests.id, id), eq(housingRequests.seekerId, seekerId)))
+    .returning({ id: housingRequests.id });
+  return deleted.length > 0;
 }
 
 export async function setRequestStatus(

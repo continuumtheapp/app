@@ -19,7 +19,8 @@
  */
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { listings, users } from "@/db/schema";
+import { listings, reviews, stays, users } from "@/db/schema";
+import { staysDueForReviewRequest, markReviewRequested } from "./stays";
 import { getListing } from "./listings";
 import { formatAllRates } from "./pricing";
 import { formatRange } from "./dates";
@@ -124,6 +125,80 @@ export async function onIdChecked(userId: string, decision: "verified" | "reject
   await quietly("send the ID check result", () => dm(userId, decision === "verified"
     ? `Your ID is checked. You can now publish a place or a search: ${siteUrl("/post")}`
     : `The admins couldn't confirm your ID from the photos you sent. You can send new ones here: ${siteUrl("/verify")}`));
+}
+
+/* ---------------------------------------------------------- stays, reviews */
+
+/**
+ * Whether to invite someone to pay for a membership. Membership (Stripe) isn't
+ * built yet, so for now nobody is: the hook is here so the stay and review
+ * messages below pick it up once it exists.
+ */
+async function needsMembershipInvite(_userId: string): Promise<boolean> {
+  return false;
+}
+
+async function nameOf(userId: string): Promise<string> {
+  const [row] = await getDb().select({ name: users.name, handle: users.telegramHandle })
+    .from(users).where(eq(users.id, userId)).limit(1);
+  return row?.name ?? row?.handle ?? "Your host"; // handles are stored with their @
+}
+
+/** A host marked a place taken with a member staying: tell the guest. */
+export async function onStayRecorded(stayId: number) {
+  await quietly("tell the guest about their stay", async () => {
+    const [stay] = await getDb().select().from(stays).where(eq(stays.id, stayId)).limit(1);
+    if (!stay?.guestId) return;
+    const lines = [
+      `${escapeHtml(await nameOf(stay.hostId))} marked <b>${escapeHtml(stay.listingTitle)}</b> as taken, with you staying.`,
+      "After your stay, you'll be asked to write a short review of each other.",
+    ];
+    if (await needsMembershipInvite(stay.guestId)) {
+      lines.push("", `Deal closed? Become a member: ${siteUrl("/membership")}`);
+    }
+    await dm(stay.guestId, lines.join("\n"));
+  });
+}
+
+/**
+ * Daily (cron): stays that ended yesterday or earlier, where nobody's been
+ * asked yet: ask host and guest to review each other. Only marked as asked
+ * once the bot can actually send, so nothing is skipped while it's off.
+ */
+export async function sendReviewRequests(): Promise<number> {
+  if (!isBotConfigured()) return 0;
+  const due = await staysDueForReviewRequest();
+  for (const stay of due) {
+    const link = siteUrl(`/stays/${stay.id}/review`);
+    const text = `How was it? Write a short review of your stay at <b>${escapeHtml(stay.listingTitle)}</b>: ${link}`;
+    await quietly("ask the host for a review", () => dm(stay.hostId, text));
+    if (stay.guestId) await quietly("ask the guest for a review", () => dm(stay.guestId!, text));
+    await markReviewRequested(stay.id);
+  }
+  return due.length;
+}
+
+/**
+ * A review was written: tell the person it's about. If they aren't a member
+ * (agreed plan: "review received by a non-member"), alert the admins too.
+ */
+export async function onReviewWritten(reviewId: number) {
+  await quietly("tell someone about their review", async () => {
+    const [review] = await getDb().select().from(reviews).where(eq(reviews.id, reviewId)).limit(1);
+    if (!review) return;
+    await dm(review.subjectId, `${escapeHtml(await nameOf(review.authorId))} wrote a review of you: ${siteUrl(`/members/${review.subjectId}`)}`);
+    const [subject] = await getDb().select({ memberStatus: users.memberStatus }).from(users)
+      .where(eq(users.id, review.subjectId)).limit(1);
+    if (subject && subject.memberStatus !== "member") {
+      const admins = await getDb().select({ id: users.id }).from(users).where(eq(users.isAdmin, true));
+      for (const a of admins) {
+        await dm(a.id, `A non-member received a review: ${siteUrl(`/members/${review.subjectId}`)}`);
+      }
+    }
+    if (await needsMembershipInvite(review.subjectId)) {
+      await dm(review.subjectId, `Become a member to keep using SimbaCasa: ${siteUrl("/membership")}`);
+    }
+  });
 }
 
 /* ------------------------------------------------------------ the webhook */

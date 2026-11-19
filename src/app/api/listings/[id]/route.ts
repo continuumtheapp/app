@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { after } from "next/server";
-import { syncListingPost, removeListingPost } from "@/lib/bot";
+import { syncListingPost, removeListingPost, onStayRecorded } from "@/lib/bot";
+import { guestCandidates, recordStay, type GuestChoice } from "@/lib/stays";
+import { toDayNumber } from "@/lib/dates";
 import { getDb } from "@/db";
 import { listings } from "@/db/schema";
 import { listingSchema } from "@/lib/validation";
@@ -9,6 +11,7 @@ import {
   activeListingCount, MAX_ACTIVE_LISTINGS, TOO_MANY_LISTINGS,
 } from "@/lib/listings";
 import { geocodeAddress } from "@/lib/geo";
+import { deletePhoto } from "@/lib/photos";
 import { requireContactableUser, authErrorResponse } from "@/lib/session";
 
 export async function PUT(
@@ -66,7 +69,9 @@ export async function PATCH(
   try {
     const user = await requireContactableUser();
     const id = Number((await params).id);
-    const { status } = (await request.json()) as { status?: string };
+    const { status, guest, endsOn } = (await request.json()) as {
+      status?: string; guest?: GuestChoice; endsOn?: string | null;
+    };
 
     if (status !== "taken" && status !== "published" && status !== "archived") {
       return Response.json({ error: "Unknown status." }, { status: 400 });
@@ -75,8 +80,32 @@ export async function PATCH(
     if (status === "published" && await activeListingCount(user.id, id) >= MAX_ACTIVE_LISTINGS) {
       return Response.json({ error: TOO_MANY_LISTINGS }, { status: 409 });
     }
+
+    // Marking taken says who's staying, so host and guest can review each other.
+    let stayId: number | null = null;
+    if (status === "taken" && guest) {
+      if (guest.kind === "member") {
+        const candidates = await guestCandidates(id, user.id);
+        if (!candidates.some((c) => c.id === guest.id)) {
+          return Response.json({ error: "Pick someone who asked about this place." }, { status: 400 });
+        }
+      } else if (guest.kind !== "outside" && guest.kind !== "unsaid") {
+        return Response.json({ error: "Say who's staying." }, { status: 400 });
+      }
+      let endDay: number | null = null;
+      if (endsOn) {
+        try { endDay = toDayNumber(endsOn); } catch {
+          return Response.json({ error: "That end date doesn't look right." }, { status: 400 });
+        }
+      }
+      stayId = await recordStay(id, user.id, guest, endDay);
+    }
+
     await setListingStatus(id, user.id, status);
-    after(() => syncListingPost(id));
+    after(async () => {
+      await syncListingPost(id);
+      if (stayId !== null) await onStayRecorded(stayId);
+    });
     return Response.json({ ok: true });
   } catch (error) {
     return authErrorResponse(error) ?? Response.json(
@@ -101,7 +130,11 @@ export async function DELETE(
 
     // Cascades to blocks, flexible days and photos via the schema's foreign keys.
     await getDb().delete(listings).where(eq(listings.id, id));
-    after(() => removeListingPost(existing.telegramMessageId));
+    after(async () => {
+      await removeListingPost(existing.telegramMessageId);
+      // The rows are gone with the listing; the files would otherwise stay in R2.
+      await Promise.allSettled(existing.photoKeys.map((key) => deletePhoto(key)));
+    });
     return Response.json({ ok: true });
   } catch (error) {
     return authErrorResponse(error) ?? Response.json(

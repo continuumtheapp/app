@@ -5,15 +5,16 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 /**
- * Status changes for a seeker's own request. Once its dates have passed there
- * is nothing to reopen: the way forward is a new request with new dates.
+ * A seeker's own request: Edit (where it can also be deleted) and its status.
+ * Once its dates have passed there is nothing to reopen: the way forward is a
+ * new request with new dates.
  */
 export function RequestActions({ id, status, datesPassed }:
   { id: number; status: string; datesPassed: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
-  async function setStatus(next: "open" | "found" | "closed") {
+  async function setStatus(next: "open" | "found") {
     setBusy(true);
     await fetch(`/api/requests/${id}`, {
       method: "PATCH",
@@ -24,29 +25,34 @@ export function RequestActions({ id, status, datesPassed }:
     setBusy(false);
   }
 
+  // Like a place's card: Edit on the left (deleting is inside it), the one
+  // action that matters on the right, in gold.
+  const editLink = <Link href={`/requests/${id}/edit`} className="btn btn-secondary">Edit</Link>;
+
   if (datesPassed) {
     return (
-      <Link href="/requests/new" className="btn btn-primary w-full">Post new dates</Link>
+      <div className="btn-row">
+        {editLink}
+        <Link href="/requests/new" className="btn btn-primary">Post new dates</Link>
+      </div>
     );
   }
   if (status === "open") {
     return (
       <div className="btn-row">
-        <button onClick={() => setStatus("found")} disabled={busy} className="btn btn-primary">
+        {editLink}
+        <button onClick={() => setStatus("found")} disabled={busy} className="btn btn-gold">
           I found a place
-        </button>
-        <button onClick={() => setStatus("closed")} disabled={busy} className="btn btn-secondary">
-          Close request
         </button>
       </div>
     );
   }
-  if (status === "found" || status === "closed") {
-    return (
-      <button onClick={() => setStatus("open")} disabled={busy} className="btn btn-secondary w-full">
+  return (
+    <div className="btn-row">
+      {editLink}
+      <button onClick={() => setStatus("open")} disabled={busy} className="btn btn-secondary">
         Still looking
       </button>
-    );
-  }
-  return null;
+    </div>
+  );
 }

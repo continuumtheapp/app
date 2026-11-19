@@ -54,12 +54,13 @@ export function SearchSummary({
         </button>
 
         {open && (
-          <div className="fixed inset-0 z-50 bg-ink/20 flex items-end sm:items-center sm:justify-center"
+          <div className="fixed inset-0 z-50 bg-ink/45 flex items-end sm:items-center sm:justify-center"
                onClick={() => setOpen(false)}>
             <div
-              className="w-full sm:max-w-md bg-paper rounded-t-2xl sm:rounded-2xl p-4 max-h-[90vh] overflow-y-auto"
+              className="sheet w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl px-4 pt-3 pb-4 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
+              <div className="sheet-handle sm:hidden" aria-hidden />
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-medium">Change search</h2>
                 <button onClick={() => setOpen(false)}

@@ -8,6 +8,7 @@
  */
 import "dotenv/config";
 import postgres from "postgres";
+import { addSampleContacts } from "./sample-contacts";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -82,7 +83,7 @@ const ID_CHECKED = new Set(["u_anna", "u_ben", "u_cleo", "u_eli"]);
 
 async function main() {
   console.log("Clearing existing data…");
-  await sql`TRUNCATE contact_reveals, reports, listing_photos, flexible_days,
+  await sql`TRUNCATE reviews, stays, contact_reveals, reports, listing_photos, flexible_days,
             availability_blocks, listings, sessions, accounts, verifications, users CASCADE`;
 
   for (const h of HOSTS) {
@@ -179,6 +180,9 @@ async function main() {
 
   console.log(`Seeded 30 listings, ${blockCount} availability blocks, ${flexCount} flexible days.`);
   console.log(`Availability starts ${new Date(DAY0 * MS_PER_DAY).toISOString().slice(0, 10)}.`);
+  // Members who asked for each place's contact, so "Mark as taken" has guests to pick.
+  const contacts = await addSampleContacts(sql);
+  console.log(`Added ${contacts.contacts} sample contacts.`);
   await sql.end();
 }
 

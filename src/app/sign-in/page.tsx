@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { SignInForm } from "@/components/sign-in-form";
 import { isTelegramConfigured } from "@/lib/env";
-import { DEV_TEST_MEMBERS, isDevSignInEnabled } from "@/lib/dev-sign-in";
+import { DEV_TEST_MEMBERS, isDevSignInEnabled, testSignInNeedsCode } from "@/lib/dev-sign-in";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Sign in · SimbaCasa" };
@@ -16,7 +16,7 @@ export default function SignInPage() {
       <div className="mt-6">
         <Suspense fallback={<div className="card h-64 animate-pulse" />}>
           <SignInForm telegram={isTelegramConfigured()}
-                      testMembers={isDevSignInEnabled() ? [...DEV_TEST_MEMBERS] : []} />
+                      testMembers={isDevSignInEnabled() ? [...DEV_TEST_MEMBERS] : []} needsCode={testSignInNeedsCode()} />
         </Suspense>
       </div>
     </div>

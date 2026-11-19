@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import type { User } from "@/db/schema";
 import { isTelegramConfigured } from "@/lib/env";
-import { DEV_TEST_MEMBERS, isDevSignInEnabled } from "@/lib/dev-sign-in";
+import { DEV_TEST_MEMBERS, isDevSignInEnabled, testSignInNeedsCode } from "@/lib/dev-sign-in";
 import { SignInForm } from "./sign-in-form";
 import { JoinForm } from "./join-form";
 import { AvatarZoom } from "./avatar-zoom";
@@ -54,7 +54,7 @@ function Step({ viewer, code, here }: {
         <p className="mb-3 text-sm font-medium">1. Sign in with Telegram</p>
         <Suspense fallback={<div className="card h-40 animate-pulse" />}>
           <SignInForm telegram={isTelegramConfigured()} next={here}
-                      testMembers={isDevSignInEnabled() ? [...DEV_TEST_MEMBERS] : []} />
+                      testMembers={isDevSignInEnabled() ? [...DEV_TEST_MEMBERS] : []} needsCode={testSignInNeedsCode()} />
         </Suspense>
         <p className="mt-3 text-xs text-ink-faint">Then you'll fill in your profile: a photo, your name and a few lines about you.</p>
       </>

@@ -7,14 +7,16 @@ import { signIn } from "@/lib/auth-client";
 interface TestMember { id: string; label: string; note: string }
 
 /**
- * Telegram is the only way to sign in. `testMembers` is non-empty only under
- * `next dev`, for trying things locally as a seed member.
+ * Telegram is the only way to sign in. `testMembers` is non-empty only while
+ * test sign-in is on (always under `next dev`; online only with a code), for
+ * trying things as a seed member.
  */
-export function SignInForm({ telegram, testMembers, next: nextOverride }:
-  { telegram: boolean; testMembers: TestMember[]; next?: string }) {
+export function SignInForm({ telegram, testMembers, needsCode = false, next: nextOverride }:
+  { telegram: boolean; testMembers: TestMember[]; needsCode?: boolean; next?: string }) {
   const params = useSearchParams();
   const next = nextOverride ?? params.get("next") ?? "/";
   const [error, setError] = useState<string | null>(null);
+  const [code, setCode] = useState("");
 
   async function continueWithTelegram() {
     setError(null);
@@ -27,7 +29,7 @@ export function SignInForm({ telegram, testMembers, next: nextOverride }:
     const response = await fetch("/api/auth/dev/sign-in", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({ userId, ...(needsCode ? { code } : {}) }),
     });
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as { message?: string };
@@ -61,11 +63,19 @@ export function SignInForm({ telegram, testMembers, next: nextOverride }:
       {testMembers.length > 0 && (
         <div className="mt-6 pt-5 border-t border-dashed border-line">
           <p className="text-xs font-medium text-ink-soft">
-            Development only: sign in as a test member
+            Testing: sign in as a test member
           </p>
+          {needsCode && (
+            <div className="mt-2">
+              <label className="label" htmlFor="test-code">Test code</label>
+              <input id="test-code" type="password" className="field" value={code}
+                     autoComplete="off" onChange={(e) => setCode(e.target.value)} />
+            </div>
+          )}
           <div className="mt-2 space-y-2">
             {testMembers.map((m) => (
               <button key={m.id} type="button" onClick={() => signInAsTestMember(m.id)}
+                      disabled={needsCode && !code}
                       className="btn btn-secondary w-full justify-between">
                 <span>{m.label}</span>
                 <span className="text-xs text-ink-faint">{m.note}</span>
